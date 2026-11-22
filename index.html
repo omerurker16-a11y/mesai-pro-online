@@ -1,0 +1,2918 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mesai Planlayıcı Pro</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0ea5e9" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Mesai Pro" />
+  <!-- Supabase JS v2 (İnternet yoksa uygulama yerel/offline modda sorunsuz çalışmaya devam eder) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-page: #eaedf2;
+      --bg-white: #ffffff;
+      --bg-header-row: #f1f3f7;
+      --zebra-dark: #b8c0cc;
+      --zebra-light: #ffffff;
+      --border-slate: #e2e8f0;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      --early-bg: #d4e6f9;
+      --early-fg: #1a4b8c;
+      --late-bg: #f7d7d4;
+      --late-fg: #a83029;
+      --sale-bg: #fef3c7;
+      --sale-fg: #92400e;
+      --vac-bg: #e0f2fe;
+      --vac-fg: #0369a1;
+      --sick-bg: #ffe4e6;
+      --sick-fg: #be123c;
+      --off-bg: #e2e8f0;
+      --off-fg: #64748b;
+      --empty-bg: #f8f9fb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg-page);
+      color: var(--text-main);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-width: 320px;
+      min-height: 100vh;
+      line-height: 1.4;
+    }
+
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; border: none; background: transparent; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #e2e8f0; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
+
+    /* Header */
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--border-slate);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .topbar-inner {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 8px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #0ea5e9, #4f46e5);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; flex-shrink: 0;
+    }
+    .brand-top { display: flex; align-items: center; gap: 6px; }
+    .brand h1 { font-size: 14px; font-weight: 700; line-height: 1.1; color: #1e293b; }
+    .brand p { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+    /* Cloud Status Pill */
+    .cloud-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 7px; border-radius: 999px;
+      font-size: 10px; font-weight: 700; transition: 0.15s;
+    }
+    .cloud-pill.synced { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+    .cloud-pill.saving { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+    .cloud-pill.loading { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .cloud-pill.error { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
+    .cloud-pill.offline { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+    .cloud-pill:hover { filter: brightness(0.95); }
+
+    .center-controls {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    }
+    .tabs {
+      display: flex; align-items: center;
+      background: #f1f3f7; border-radius: 8px; padding: 2px;
+    }
+    .tab-btn {
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; color: #64748b; transition: 0.15s;
+    }
+    .tab-btn.active { background: #fff; color: #1e293b; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+    .tab-btn:hover:not(.active) { color: #334155; }
+
+    /* Week Navigation Bar */
+    .week-nav {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #f1f3f7; border-radius: 8px; padding: 2px;
+    }
+    .week-nav-btn {
+      padding: 5px 9px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; color: #475569; transition: 0.15s;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .week-nav-btn:hover { background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+    .week-nav-current {
+      padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+      color: #0369a1; background: #e0f2fe; white-space: nowrap;
+    }
+    .week-nav-current:hover { background: #bae6fd; }
+    .archive-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+      background: #0284c7; color: #fff; font-size: 10px; font-weight: 700;
+      margin-left: 4px;
+    }
+
+    /* Layout toggle (Tablo / Mobil Kart) */
+    .layout-toggle {
+      display: inline-flex; align-items: center;
+      background: #f1f3f7; border-radius: 8px; padding: 2px;
+    }
+    .layout-btn {
+      padding: 5px 10px; border-radius: 6px;
+      font-size: 11px; font-weight: 700; color: #64748b; transition: 0.15s;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .layout-btn.active { background: #0ea5e9; color: #fff; box-shadow: 0 1px 2px rgba(14,165,233,0.3); }
+    .layout-btn:hover:not(.active) { color: #334155; }
+
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 10px; border-radius: 8px;
+      font-size: 12px; font-weight: 600; transition: 0.15s;
+      background: #f1f3f7; color: #475569;
+    }
+    .btn:hover:not(:disabled) { background: #e2e8f0; }
+    .btn-icon { padding: 6px; }
+    .btn-sky { background: #0ea5e9; color: #fff; }
+    .btn-sky:hover:not(:disabled) { background: #0284c7; }
+    .btn-grad { background: linear-gradient(90deg, #0ea5e9, #6366f1); color: #fff; }
+    .btn-grad:hover:not(:disabled) { filter: brightness(1.08); }
+    .btn-sky-soft { background: #e0f2fe; color: #0369a1; }
+    .btn-sky-soft:hover:not(:disabled) { background: #bae6fd; }
+    .btn-indigo-soft { background: #eef2ff; color: #4338ca; }
+    .btn-indigo-soft:hover:not(:disabled) { background: #e0e7ff; }
+    .btn-rose-soft { background: #fff1f2; color: #e11d48; }
+    .btn-rose-soft:hover:not(:disabled) { background: #ffe4e6; }
+    .btn-emerald-soft { background: #ecfdf5; color: #059669; }
+    .btn-emerald-soft:hover:not(:disabled) { background: #d1fae5; }
+    .btn-wa { background: rgba(37, 211, 102, 0.12); color: #16a34a; }
+    .btn-wa:hover:not(:disabled) { background: rgba(37, 211, 102, 0.22); }
+    .btn-mode-active { background: #fae8ff; color: #a21caf; box-shadow: 0 0 0 1px #f0abfc; }
+    .btn-active-icon { background: #f0f9ff; color: #0284c7; }
+    .divider { width: 1px; height: 20px; background: #e2e8f0; margin: 0 2px; }
+
+    /* Container */
+    .container { max-width: 1600px; margin: 0 auto; padding: 12px 16px 32px; }
+
+    /* Tam Ekran Pano Modu */
+    body.board-mode .container { max-width: 100%; padding: 16px 24px 36px; }
+    body.board-mode table.sched { font-size: 16px; }
+    body.board-mode .cell-btn { min-height: 68px; font-size: 15px; padding: 12px 10px; }
+    body.board-mode .person-name { font-size: 15px; }
+    body.board-mode .day-hdr-label { font-size: 16px; }
+    body.board-mode .day-hdr-date { font-size: 12px; }
+    body.board-mode .log-item { font-size: 14px; padding: 11px 14px; }
+
+    .board-bar {
+      background: linear-gradient(90deg, #0f172a, #1e293b);
+      color: #fff;
+      padding: 10px 24px;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+    }
+    .board-bar-left { display: flex; align-items: center; gap: 12px; }
+    .board-badge {
+      padding: 3px 10px; border-radius: 999px;
+      background: #0ea5e9; color: #fff;
+      font-size: 11px; font-weight: 800; letter-spacing: 0.05em;
+    }
+    .board-title { font-size: 15px; font-weight: 700; }
+    .board-exit-btn {
+      padding: 7px 14px; border-radius: 8px;
+      background: rgba(255,255,255,0.14); color: #fff;
+      font-size: 12px; font-weight: 700; transition: 0.15s;
+    }
+    .board-exit-btn:hover { background: rgba(255,255,255,0.25); }
+
+    /* Cards */
+    .card {
+      background: #fff;
+      border: 1px solid var(--border-slate);
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      overflow: hidden;
+    }
+    .card-pad { padding: 14px 16px; }
+    .mt-3 { margin-top: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .mb-3 { margin-bottom: 12px; }
+
+    /* Cloud Panel */
+    .cloud-card {
+      background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 60%);
+      border: 1.5px solid #bae6fd;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .cloud-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    /* Archive Drawer */
+    .archive-strip {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    }
+    .archive-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 700;
+      background: #f1f3f7; color: #475569; border: 1px solid #e2e8f0; transition: 0.15s;
+    }
+    .archive-pill:hover { background: #e2e8f0; color: #0f172a; }
+    .archive-pill.active { background: #0ea5e9; color: #fff; border-color: #0284c7; }
+    .archive-pill-del {
+      font-size: 10px; opacity: 0.65; padding: 0 2px; border-radius: 4px;
+    }
+    .archive-pill-del:hover { opacity: 1; background: rgba(225,29,72,0.18); color: #be123c; }
+
+    /* Settings */
+    .settings-grid {
+      display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;
+    }
+    .field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #64748b; }
+    .field span { font-weight: 600; }
+    .input, .select {
+      border: 1px solid var(--border-slate); border-radius: 8px;
+      padding: 7px 10px; font-size: 13px; background: #fff; outline: none;
+    }
+    .input:focus, .select:focus { border-color: #38bdf8; }
+    .w-20 { width: 78px; }
+    .w-28 { width: 115px; }
+    .w-40 { width: 165px; }
+    .w-44 { width: 185px; }
+
+    .add-person-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .add-person-row .input { flex: 1; min-width: 220px; }
+    .bulk-box {
+      margin-top: 10px; padding: 12px; border-radius: 10px;
+      background: #f8fafc; border: 1px dashed #94a3b8;
+    }
+    .bulk-textarea {
+      width: 100%; min-height: 92px; padding: 8px 10px;
+      border: 1px solid var(--border-slate); border-radius: 8px;
+      font-size: 13px; background: #fff; outline: none; resize: vertical;
+    }
+    .bulk-textarea:focus { border-color: #38bdf8; }
+
+    .settings-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .settings-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+    .settings-meta {
+      margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;
+      font-size: 12px; color: #94a3b8;
+    }
+    .settings-meta strong { color: #334155; }
+
+    /* Schedule Table */
+    .table-wrap { overflow-x: auto; }
+    table.sched {
+      width: 100%; border-collapse: collapse; min-width: 900px; font-size: 14px;
+    }
+    table.sched thead tr {
+      background: var(--bg-header-row);
+      border-bottom: 1px solid var(--border-slate);
+    }
+    table.sched.special-tbl thead tr { background: rgba(255, 251, 235, 0.75); }
+    table.sched th {
+      padding: 12px 10px; text-align: center;
+      border-right: 1px solid #f1f5f9; min-width: 140px;
+      position: relative;
+    }
+    table.sched th:last-child { border-right: none; }
+    table.sched th.col-person {
+      position: sticky; left: 0; z-index: 20;
+      text-align: left; padding-left: 16px; min-width: 215px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #64748b;
+      background: var(--bg-header-row);
+      border-right: 1px solid var(--border-slate);
+    }
+    table.sched.special-tbl th.col-person {
+      background: #fffbeb; color: #b45309;
+    }
+
+    /* Bugün Vurgusu */
+    table.sched th.is-today {
+      background: linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 100%);
+      box-shadow: inset 0 3px 0 #0ea5e9;
+    }
+    table.sched.special-tbl th.is-today {
+      background: linear-gradient(180deg, #fef3c7 0%, #fffbeb 100%);
+      box-shadow: inset 0 3px 0 #f59e0b;
+    }
+    .today-pill {
+      display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 999px;
+      background: #0ea5e9; color: #fff; font-size: 9px; font-weight: 800;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    table.sched td.shift-td.is-today-col {
+      background-image: linear-gradient(rgba(14, 165, 233, 0.06), rgba(14, 165, 233, 0.06));
+    }
+
+    .day-hdr-btn { width: 100%; text-align: center; }
+    .day-hdr-label { font-size: 14px; font-weight: 700; color: #334155; }
+    .day-hdr-date { font-size: 11px; color: #94a3b8; margin-top: 2px; font-weight: 500; }
+    th.is-today .day-hdr-label { color: #0369a1; }
+
+    table.sched tbody tr { border-bottom: 1px solid var(--border-slate); }
+    table.sched tbody tr.zebra-0 { background: var(--zebra-dark); }
+    table.sched tbody tr.zebra-1 { background: var(--zebra-light); }
+
+    table.sched td.person-cell {
+      position: sticky; left: 0; z-index: 10;
+      padding: 0 14px; border-right: 1px solid var(--border-slate);
+    }
+    tr.zebra-0 td.person-cell { background: var(--zebra-dark); }
+    tr.zebra-1 td.person-cell { background: var(--zebra-light); }
+    table.sched.special-tbl td.person-cell { background: #fffbeb; }
+
+    .person-box {
+      display: flex; align-items: center; gap: 8px; padding: 12px 0;
+    }
+    .person-name { font-size: 13px; font-weight: 700; color: #1e293b; white-space: nowrap; }
+    .person-counters { display: flex; gap: 6px; margin-top: 2px; opacity: 0.85; }
+    .cnt-e { font-size: 10px; font-weight: 700; color: #2563eb; }
+    .cnt-g { font-size: 10px; font-weight: 700; color: #e11d48; }
+
+    .person-actions {
+      margin-left: auto; display: flex; align-items: center; gap: 2px;
+      opacity: 0; transition: 0.15s;
+    }
+    tr:hover .person-actions { opacity: 1; }
+    .mini-btn {
+      padding: 4px 5px; border-radius: 5px; color: #475569;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; line-height: 1;
+    }
+    .mini-btn:hover:not(:disabled) { background: rgba(0,0,0,0.08); color: #0f172a; }
+    .mini-btn.del:hover { background: #ffe4e6; color: #e11d48; }
+
+    .ek-badge {
+      width: 28px; height: 28px; border-radius: 999px;
+      background: #fde68a; color: #92400e;
+      font-size: 10px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .ek-name { font-size: 13px; font-weight: 700; color: #78350f; }
+
+    table.sched td.shift-td {
+      padding: 6px; border-right: 1px solid var(--border-slate); vertical-align: top;
+    }
+    table.sched td.shift-td:last-child { border-right: none; }
+
+    .cell-btn {
+      position: relative; width: 100%; min-height: 56px;
+      border-radius: 8px; padding: 10px 8px;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      text-align: center; transition: 0.15s;
+      font-size: 13px; font-weight: 700; line-height: 1.25;
+      white-space: pre-line;
+    }
+    .cell-btn.empty { background: var(--empty-bg); color: transparent; cursor: default; }
+    .cell-btn.empty-special {
+      background: #fff; border: 2px dashed #fde68a; color: #fcd34d; cursor: pointer;
+    }
+    .cell-btn.empty-special:hover { border-color: #fbbf24; background: #fffbeb; }
+    .cell-btn.t-early { background: var(--early-bg); color: var(--early-fg); }
+    .cell-btn.t-late { background: var(--late-bg); color: var(--late-fg); }
+    .cell-btn.t-sale { background: var(--sale-bg); color: var(--sale-fg); }
+    .cell-btn.t-vacation { background: var(--vac-bg); color: var(--vac-fg); }
+    .cell-btn.t-sick { background: var(--sick-bg); color: var(--sick-fg); }
+    .cell-btn.t-off { background: var(--off-bg); color: var(--off-fg); font-style: italic; font-weight: 600; }
+    .cell-btn.t-custom { background: #ede9fe; color: #5b21b6; }
+    .cell-btn.completed {
+      background: #e2e8f0 !important; color: #94a3b8 !important;
+      text-decoration: line-through; opacity: 0.72;
+    }
+    .cell-btn.selected { box-shadow: 0 0 0 2px #e879f9, 0 0 0 4px #fff; }
+    .cell-btn:not(.empty):hover { filter: brightness(0.96); }
+
+    .empty-state {
+      padding: 36px 16px; text-align: center; color: #64748b; font-size: 13px;
+      background: #fff;
+    }
+
+    /* Mobil / Kart Görünümü */
+    .mobile-day-pills {
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .day-pill {
+      flex: 0 0 auto; padding: 8px 14px; border-radius: 10px;
+      background: #fff; border: 1px solid var(--border-slate);
+      text-align: center; transition: 0.15s; min-width: 96px;
+    }
+    .day-pill:hover { border-color: #94a3b8; }
+    .day-pill.is-today:not(.active) {
+      border-color: #0ea5e9; background: #f0f9ff; color: #0369a1;
+    }
+    .day-pill.active {
+      background: linear-gradient(135deg, #0ea5e9, #4f46e5);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 3px 10px rgba(14, 165, 233, 0.28);
+    }
+    .day-pill-name { font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .day-pill-date { font-size: 10px; opacity: 0.78; margin-top: 1px; }
+    .day-pill-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 999px;
+      background: #0ea5e9;
+    }
+    .day-pill.active .day-pill-dot { background: #fde047; }
+
+    .mobile-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;
+    }
+    .m-group {
+      background: #fff; border: 1px solid var(--border-slate); border-radius: 12px;
+      overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .m-group-hdr {
+      padding: 10px 14px; font-size: 12px; font-weight: 800; letter-spacing: 0.04em;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border-slate);
+    }
+    .m-group-hdr.early { background: var(--early-bg); color: var(--early-fg); }
+    .m-group-hdr.late { background: var(--late-bg); color: var(--late-fg); }
+    .m-group-hdr.other { background: var(--sale-bg); color: var(--sale-fg); }
+    .m-group-hdr.off { background: #f1f3f7; color: #475569; }
+    .m-group-hdr.special { background: linear-gradient(90deg, #fffbeb, #ffffff); color: #92400e; }
+
+    .m-list { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .m-person-card {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0;
+      background: #f8fafc; transition: 0.15s;
+    }
+    .m-person-card.t-early { background: #eff6ff; border-color: #bfdbfe; }
+    .m-person-card.t-late { background: #fef2f2; border-color: #fecaca; }
+    .m-person-card.t-sale { background: #fffbeb; border-color: #fde68a; }
+    .m-person-card.t-vacation { background: #f0f9ff; border-color: #bae6fd; }
+    .m-person-card.t-sick { background: #fff1f2; border-color: #fecdd3; }
+    .m-person-card.t-off { background: #f1f5f9; border-color: #cbd5e1; }
+    .m-person-card.t-custom { background: #f5f3ff; border-color: #ddd6fe; }
+    .m-person-card.completed { opacity: 0.6; text-decoration: line-through; background: #e2e8f0; }
+    .m-person-card.selected { box-shadow: 0 0 0 2px #e879f9; }
+    .m-person-main { flex: 1; text-align: left; }
+    .m-person-name { font-size: 13px; font-weight: 700; color: #1e293b; }
+    .m-person-sub { font-size: 11px; font-weight: 600; color: #64748b; margin-top: 2px; }
+
+    /* Special Header */
+    .special-hdr {
+      padding: 10px 16px; border-bottom: 1px solid var(--border-slate);
+      background: linear-gradient(90deg, #fffbeb, #ffffff);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .special-hdr-left { display: flex; align-items: center; gap: 8px; }
+    .special-icon {
+      width: 28px; height: 28px; border-radius: 8px; background: #fef3c7;
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .special-title { font-size: 12px; font-weight: 700; color: #64748b; letter-spacing: 0.05em; }
+
+    /* Selection bar */
+    .sel-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px;
+    }
+
+    /* Accordion Base */
+    .acc-btn {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; font-size: 13px; font-weight: 700; color: #334155;
+      transition: 0.15s;
+    }
+    .acc-btn:hover { background: #f8fafc; }
+    .acc-body { border-top: 1px solid var(--border-slate); padding: 12px 16px; }
+
+    /* Renkli & Dikkat Çekici Takas Açıklamaları */
+    .swap-card {
+      background: #fff;
+      border: 1.5px solid #e879f9;
+      border-left: 5px solid #c026d3;
+      border-radius: 12px;
+      box-shadow: 0 3px 12px rgba(192, 38, 211, 0.10);
+      overflow: hidden;
+    }
+    .swap-card.has-logs {
+      border-color: #d946ef;
+      box-shadow: 0 4px 16px rgba(217, 70, 239, 0.18);
+    }
+    .swap-acc-btn {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      background: linear-gradient(90deg, #fdf4ff 0%, #fff7ed 55%, #ffffff 100%);
+      transition: 0.15s;
+    }
+    .swap-acc-btn:hover {
+      background: linear-gradient(90deg, #fae8ff 0%, #ffedd5 55%, #ffffff 100%);
+    }
+    .swap-hdr-left { display: flex; align-items: center; gap: 10px; }
+    .swap-icon {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: linear-gradient(135deg, #c026d3, #f97316);
+      color: #fff; font-size: 14px; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(192, 38, 211, 0.35);
+    }
+    .swap-title {
+      font-size: 13px; font-weight: 800; letter-spacing: 0.02em;
+      color: #86198f; text-transform: uppercase;
+    }
+    .swap-count-badge {
+      font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px;
+      background: linear-gradient(90deg, #c026d3, #ec4899);
+      color: #fff; box-shadow: 0 2px 6px rgba(217, 70, 239, 0.3);
+    }
+    .swap-empty-badge {
+      font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+      background: #f5d0fe; color: #86198f;
+    }
+    .swap-arrow { color: #a21caf; font-weight: 800; font-size: 12px; }
+    .swap-body {
+      border-top: 1px solid #f5d0fe;
+      padding: 12px 16px;
+      background: linear-gradient(180deg, #fefbff 0%, #ffffff 100%);
+    }
+    .log-list { display: flex; flex-direction: column; gap: 7px; max-height: 220px; overflow-y: auto; }
+    .log-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: 0.15s;
+      border: 1px solid #f5d0fe;
+      border-left: 4px solid #c026d3;
+      background: linear-gradient(90deg, #fdf4ff, #ffffff);
+      color: #4a044e;
+    }
+    .log-item.is-replace {
+      border-color: #fed7aa;
+      border-left-color: #f97316;
+      background: linear-gradient(90deg, #fff7ed, #ffffff);
+      color: #7c2d12;
+    }
+    .log-item:hover { transform: translateX(2px); filter: brightness(0.98); }
+    .log-item.selected {
+      box-shadow: 0 0 0 2px #c026d3;
+      background: #fae8ff !important;
+    }
+    .log-tag {
+      font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+      letter-spacing: 0.04em; flex-shrink: 0;
+    }
+    .log-tag.tag-swap { background: #c026d3; color: #fff; }
+    .log-tag.tag-replace { background: #f97316; color: #fff; }
+    .log-text { flex: 1; }
+    .log-time {
+      font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+      background: rgba(15, 23, 42, 0.06); color: #475569; flex-shrink: 0;
+    }
+
+    /* Notes Section */
+    .notes-header-left { display: flex; align-items: center; gap: 8px; }
+    .notes-badge {
+      font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+      background: #e0f2fe; color: #0369a1;
+    }
+    .notes-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .notes-textarea {
+      flex: 1; border: 1px solid var(--border-slate); border-radius: 8px;
+      padding: 8px 12px; font-size: 13px; resize: vertical; min-height: 44px;
+      outline: none; background: #fff;
+    }
+    .notes-textarea:focus { border-color: #38bdf8; }
+    .note-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+    .note-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 9px 12px; border-radius: 8px; background: #f8fafc;
+      border: 1px solid #e2e8f0; font-size: 13px;
+    }
+    .note-item.done { opacity: 0.6; background: #f1f5f9; }
+    .note-item.done .note-text { text-decoration: line-through; color: #64748b; }
+    .note-text { flex: 1; white-space: pre-wrap; word-break: break-word; color: #1e293b; }
+    .note-meta { font-size: 10px; color: #94a3b8; white-space: nowrap; margin-top: 2px; }
+    .note-chk { margin-top: 3px; width: 15px; height: 15px; accent-color: #0ea5e9; cursor: pointer; }
+
+    /* Context Menu (Sağ Tık Hızlı Menü) */
+    .ctx-menu {
+      position: fixed;
+      z-index: 100;
+      width: 205px;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 6px;
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.20);
+    }
+    .ctx-hdr {
+      padding: 5px 8px 7px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 11px; font-weight: 700; color: #475569;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ctx-item {
+      width: 100%; display: flex; align-items: center; gap: 8px;
+      padding: 7px 9px; border-radius: 7px;
+      font-size: 12px; font-weight: 600; color: #334155;
+      text-align: left; transition: 0.12s;
+    }
+    .ctx-item:hover { background: #f1f5f9; }
+    .ctx-dot {
+      width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+    }
+    .ctx-sep { height: 1px; background: #f1f5f9; margin: 4px 0; }
+
+    /* Dropdown */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+      position: absolute; right: 0; top: calc(100% + 6px); width: 215px;
+      background: #fff; border: 1px solid var(--border-slate); border-radius: 12px;
+      padding: 12px; box-shadow: 0 12px 24px rgba(0,0,0,0.12); z-index: 50;
+    }
+    .dropdown-title {
+      font-size: 11px; font-weight: 700; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 16px; right: 16px; z-index: 80;
+      padding: 10px 16px; border-radius: 10px; font-size: 12px; font-weight: 600;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12); border: 1px solid #e2e8f0;
+      background: #fff; color: #1e293b;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .toast.success { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+    .toast.error { background: #fff1f2; border-color: #fecdd3; color: #be123c; }
+    .hidden { display: none !important; }
+
+    .show-special-btn {
+      width: 100%; padding: 14px; border-radius: 12px;
+      border: 2px dashed #cbd5e1; color: #94a3b8;
+      font-size: 13px; font-weight: 700; transition: 0.15s;
+    }
+    .show-special-btn:hover { border-color: #94a3b8; color: #475569; background: #fff; }
+
+    @media print {
+      body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none !important; }
+      .card, .swap-card { box-shadow: none !important; }
+      @page { margin: 1cm; size: landscape; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="ctxMenu" class="ctx-menu hidden no-print"></div>
+  <div id="toast" class="toast hidden no-print"></div>
+
+  <script>
+    (() => {
+      // =========================================================================
+      // ☁️ BULUT (SUPABASE) AYARLARI
+      // Vercel'e yüklemeden önce kendi Supabase URL ve ANON KEY bilgilerini
+      // aşağıdaki iki satıra yazarsan, açtığın her cihaz/tarayıcı otomatik bağlanır.
+      // Boş bırakırsan üstteki "☁️ Bulut" rozetinden tarayıcı içinden de girebilirsin.
+      // =========================================================================
+      const DEFAULT_SUPABASE_URL = "";
+      const DEFAULT_SUPABASE_ANON_KEY = "";
+      const CLOUD_TABLE_NAME = "app_state";
+      const CLOUD_STATE_ID = "00000000-0000-0000-0000-000000000001";
+
+      const STORAGE_KEY = "omer-mesai-planlayici-cloud-v1";
+      const CLOUD_CFG_KEY = "omer-mesai-cloud-config-v1";
+      const SPECIAL_PERSON = "EMRAH KORKMAZ";
+      const WEEKDAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+      const WEEKDAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+      const CLIENT_ID = `cli-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      // --- Date Helpers ---
+      const pad = (n) => String(n).padStart(2, "0");
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const toYmd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const getTodayYmd = () => toYmd(new Date());
+      const parseYmd = (s) => {
+        const [y, m, d] = String(s || "").split("-").map(Number);
+        return !y || !m || !d ? new Date() : new Date(y, m - 1, d);
+      };
+      const mondayOf = (d) => {
+        const c = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const js = c.getDay();
+        c.setDate(c.getDate() + (js === 0 ? -6 : 1 - js));
+        return c;
+      };
+      const shiftDaysYmd = (ymd, deltaDays) => {
+        const d = parseYmd(ymd);
+        d.setDate(d.getDate() + deltaDays);
+        return toYmd(mondayOf(d));
+      };
+      const fmtDate = (ymd) => {
+        const d = parseYmd(ymd);
+        return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+      };
+      const isoWeek = (d) => {
+        const c = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dn = c.getUTCDay() || 7;
+        c.setUTCDate(c.getUTCDate() + 4 - dn);
+        const ys = new Date(Date.UTC(c.getUTCFullYear(), 0, 1));
+        return Math.ceil(((c.getTime() - ys.getTime()) / 86400000 + 1) / 7);
+      };
+      const buildDays = (startDate, count) => {
+        const start = mondayOf(parseYmd(startDate));
+        const n = clamp(Number(count) || 6, 1, 31);
+        const todayYmd = getTodayYmd();
+        const res = [];
+        const cur = new Date(start);
+        while (res.length < n) {
+          const js = cur.getDay();
+          if (js !== 0) {
+            const idx = js - 1;
+            const ymd = toYmd(cur);
+            res.push({
+              index: res.length,
+              ymd,
+              shortLabel: WEEKDAY_SHORT[idx],
+              label: WEEKDAY_NAMES[idx],
+              fullDate: fmtDate(ymd),
+              isSaturday: js === 6,
+              isToday: ymd === todayYmd,
+            });
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+        return res;
+      };
+      const getWeekInfo = (days) => {
+        if (!days.length) return "-";
+        const f = parseYmd(days[0].ymd);
+        const l = parseYmd(days[days.length - 1].ymd);
+        return `${isoWeek(f)}. Hafta • ${fmtDate(toYmd(f))} → ${fmtDate(toYmd(l))}`;
+      };
+
+      // --- State Helpers ---
+      const clone = (v) => JSON.parse(JSON.stringify(v));
+      const emptyCell = () => ({ type: "", text: "", completed: false });
+      const createCell = (type, text, ov) => ({ ...emptyCell(), type, text, ...(ov || {}) });
+      const isWorking = (t) => t === "early" || t === "late" || t === "sale" || t === "custom";
+      const shiftText = (kind, s) =>
+        kind === "early" ? `${s.earlyLabel} ${s.earlyTime}`.trim() : `${s.lateLabel} ${s.lateTime}`.trim();
+      const shiftCell = (kind, s) => createCell(kind, shiftText(kind, s));
+      const saleTextFromName = (name) => `SATIŞ: ${name.trim().split(/\s+/)[0] || name}`;
+      const saleTextFromManualName = () => {
+        const input = window.prompt("Satış yapan kişinin adı (isteğe bağlı):\nBoş bırakırsanız sadece 'SATIŞ' yazılacak");
+        if (input === null) return null;
+        const name = input.trim();
+        return name ? `SATIŞ: ${name.split(/\s+/)[0]}` : "SATIŞ";
+      };
+
+      const getProfileSettings = (p, cur) => {
+        if (p === "sabah") {
+          return { ...cur, profile: p, earlyPerDay: 0, earlyTime: "", lateTime: "20:00", startShift: "late", saturdayLateEnabled: false };
+        }
+        if (p === "oglen") {
+          return { ...cur, profile: p, earlyTime: "12:00", lateTime: "04:00", startShift: "early", saturdayLateEnabled: false };
+        }
+        return { ...cur, profile: p, earlyTime: "20:00", lateTime: "12:00", startShift: "late", saturdayLateEnabled: false };
+      };
+
+      const createInitialState = () => ({
+        personnel: [],
+        settings: {
+          startDate: toYmd(mondayOf(new Date())),
+          dayCount: 6,
+          earlyPerDay: 2,
+          latePerDay: 3,
+          earlyLabel: "ERKEN GİRİŞ",
+          earlyTime: "20:00",
+          lateLabel: "GEÇ ÇIKIŞ",
+          lateTime: "12:00",
+          profile: "gece",
+          startShift: "late",
+          saturdayLateEnabled: false,
+          includeSpecialInPng: false,
+          layoutMode: "table",
+        },
+        pointer: 0,
+        schedule: {},
+        special: {},
+        offMap: {},
+        changeLogs: [],
+        weeksArchive: {},
+        notes: [],
+        reveal: [],
+        draw: [],
+        selectedDay: 0,
+        swapMode: false,
+        replaceMode: false,
+        multiSelect: false,
+        selectedCells: [],
+        _meta: { updatedAt: 0, clientId: CLIENT_ID },
+      });
+
+      const sanitizeState = (raw) => {
+        const base = createInitialState();
+        if (!raw || typeof raw !== "object") return base;
+        const ss = raw.settings && typeof raw.settings === "object" ? raw.settings : {};
+        const mergedSettings = { ...base.settings, ...ss };
+        const profile = ["gece", "oglen", "sabah"].includes(mergedSettings.profile) ? mergedSettings.profile : "gece";
+        const layoutMode = mergedSettings.layoutMode === "cards" ? "cards" : "table";
+        const personnel = Array.isArray(raw.personnel)
+          ? raw.personnel.filter((x) => typeof x === "string" && x.trim().length > 0)
+          : [];
+        const dayCount = clamp(Number(mergedSettings.dayCount) || 6, 1, 31);
+        return {
+          ...base,
+          ...raw,
+          personnel,
+          settings: {
+            ...mergedSettings,
+            profile,
+            layoutMode,
+            dayCount,
+            earlyPerDay: Math.max(0, Number(mergedSettings.earlyPerDay) || 0),
+            latePerDay: Math.max(0, Number(mergedSettings.latePerDay) || 0),
+          },
+          pointer: personnel.length ? clamp(Number(raw.pointer) || 0, 0, personnel.length - 1) : 0,
+          schedule: raw.schedule && typeof raw.schedule === "object" ? raw.schedule : {},
+          special: raw.special && typeof raw.special === "object" ? raw.special : {},
+          offMap: raw.offMap && typeof raw.offMap === "object" ? raw.offMap : {},
+          changeLogs: Array.isArray(raw.changeLogs) ? raw.changeLogs : [],
+          weeksArchive: raw.weeksArchive && typeof raw.weeksArchive === "object" ? raw.weeksArchive : {},
+          notes: Array.isArray(raw.notes) ? raw.notes : [],
+          reveal: Array.isArray(raw.reveal) ? raw.reveal : [],
+          draw: Array.isArray(raw.draw) ? raw.draw : [],
+          selectedDay: clamp(Number(raw.selectedDay) || 0, 0, Math.max(0, dayCount - 1)),
+          selectedCells: Array.isArray(raw.selectedCells) ? raw.selectedCells : [],
+          _meta: raw._meta && typeof raw._meta === "object" ? raw._meta : { updatedAt: 0, clientId: "" },
+        };
+      };
+
+      const loadLocalState = () => {
+        try {
+          const r =
+            localStorage.getItem(STORAGE_KEY) ||
+            localStorage.getItem("omer-mesai-planlayici-single-v5") ||
+            localStorage.getItem("omer-mesai-planlayici-single-v4") ||
+            localStorage.getItem("omer-mesai-planlayici-single-v3");
+          return r ? sanitizeState(JSON.parse(r)) : createInitialState();
+        } catch {
+          return createInitialState();
+        }
+      };
+
+      const loadCloudConfig = () => {
+        if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
+          return {
+            url: DEFAULT_SUPABASE_URL.trim().replace(/\/+$/, ""),
+            key: DEFAULT_SUPABASE_ANON_KEY.trim(),
+            source: "code",
+          };
+        }
+        try {
+          const raw = localStorage.getItem(CLOUD_CFG_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.url && parsed.key) {
+              return {
+                url: String(parsed.url).trim().replace(/\/+$/, ""),
+                key: String(parsed.key).trim(),
+                source: "local",
+              };
+            }
+          }
+        } catch {}
+        return { url: "", key: "", source: "none" };
+      };
+
+      const loadServerCloudConfig = async () => {
+        if (window.location.protocol !== "http:" && window.location.protocol !== "https:") {
+          return null;
+        }
+        try {
+          const res = await fetch("/api/config", { cache: "no-store" });
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (data && data.url && data.anonKey) {
+            return {
+              url: String(data.url).trim().replace(/\/+$/, ""),
+              key: String(data.anonKey).trim(),
+              source: "vercel",
+            };
+          }
+        } catch {}
+        return null;
+      };
+
+      // --- App Runtime ---
+      let state = loadLocalState();
+      let cloudCfg = loadCloudConfig();
+      let sbClient = null;
+      let sbChannel = null;
+      let cloudStatus = cloudCfg.url && cloudCfg.key ? "loading" : "offline"; // offline | loading | synced | saving | error
+      let lastSyncedAt = null;
+      let hasHydratedCloud = !(cloudCfg.url && cloudCfg.key);
+      let lastSyncedSignature = "";
+      let cloudSaveTimer = null;
+      let pendingCloudDirty = false;
+
+      let history = [];
+      let future = [];
+      let viewMode = "weekly"; // weekly | daily
+      let showSettings = false;
+      let showCloudPanel = false;
+      let showBulkAdd = false;
+      let showArchive = false;
+      let showChangelog = true;
+      let showNotes = true;
+      let showSpecial = true;
+      let showExportMenu = false;
+      let boardMode = false;
+      let ctxTarget = null;
+      let selectedLogIds = [];
+      let draggedCell = null;
+      let nameInputVal = "";
+      let bulkInputVal = "";
+      let noteInputVal = "";
+      let cloudUrlInput = cloudCfg.url;
+      let cloudKeyInput = cloudCfg.key;
+      let toastTimer = null;
+
+      const focusTodayInWeek = () => {
+        const days = buildDays(state.settings.startDate, state.settings.dayCount);
+        const todayIdx = days.findIndex((d) => d.isToday);
+        if (todayIdx !== -1) state.selectedDay = todayIdx;
+      };
+      focusTodayInWeek();
+
+      // --- Cloud Sync Engine (Veri Ezme Korumalı + Anlık Debounce + Canlı Realtime) ---
+      const stripVolatile = (st) => {
+        const c = clone(st);
+        delete c._meta;
+        delete c.selectedCells;
+        return JSON.stringify(c);
+      };
+
+      const updateCloudBadgeOnly = () => {
+        const pill = document.getElementById("cloudStatusPill");
+        if (!pill) return;
+        const map = {
+          synced: ["synced", "☁️ Bulut Senkron"],
+          saving: ["saving", "⏳ Kaydediliyor..."],
+          loading: ["loading", "📥 Yükleniyor..."],
+          error: ["error", "⚠️ Bulut Hatası"],
+          offline: ["offline", "📴 Yerel Mod"],
+        };
+        const [cls, label] = map[cloudStatus] || map.offline;
+        pill.className = `cloud-pill ${cls}`;
+        pill.textContent = label;
+      };
+
+      const initSupabaseClient = () => {
+        if (sbChannel && sbClient) {
+          try { sbClient.removeChannel(sbChannel); } catch {}
+          sbChannel = null;
+        }
+        sbClient = null;
+        if (!cloudCfg.url || !cloudCfg.key) {
+          cloudStatus = "offline";
+          hasHydratedCloud = true;
+          updateCloudBadgeOnly();
+          return;
+        }
+        if (window.supabase && typeof window.supabase.createClient === "function") {
+          sbClient = window.supabase.createClient(cloudCfg.url, cloudCfg.key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+        }
+      };
+
+      const restHeaders = () => ({
+        "Content-Type": "application/json",
+        apikey: cloudCfg.key,
+        Authorization: `Bearer ${cloudCfg.key}`,
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      });
+
+      const fetchCloudState = async (isInitial = false) => {
+        if (!cloudCfg.url || !cloudCfg.key) {
+          cloudStatus = "offline";
+          hasHydratedCloud = true;
+          updateCloudBadgeOnly();
+          return;
+        }
+        if (isInitial) {
+          cloudStatus = "loading";
+          updateCloudBadgeOnly();
+        }
+        try {
+          const url = `${cloudCfg.url}/rest/v1/${CLOUD_TABLE_NAME}?id=eq.${CLOUD_STATE_ID}&select=state`;
+          const res = await fetch(url, {
+            method: "GET",
+            headers: {
+              apikey: cloudCfg.key,
+              Authorization: `Bearer ${cloudCfg.key}`,
+            },
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const rows = await res.json();
+          const remoteRaw = Array.isArray(rows) && rows.length > 0 ? rows[0].state : null;
+
+          if (remoteRaw && typeof remoteRaw === "object") {
+            const remoteSanitized = sanitizeState(remoteRaw);
+            const remoteSig = stripVolatile(remoteSanitized);
+            const localSig = stripVolatile(state);
+            const remoteTs = Number(remoteSanitized._meta?.updatedAt || 0);
+            const localTs = Number(state._meta?.updatedAt || 0);
+
+            if (isInitial || (remoteSig !== localSig && remoteTs >= localTs)) {
+              state = remoteSanitized;
+              lastSyncedSignature = remoteSig;
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+              hasHydratedCloud = true;
+              cloudStatus = "synced";
+              lastSyncedAt = new Date();
+              render(true);
+              if (!isInitial) showToast("Diğer cihazdaki güncelleme senkronize edildi.", "info");
+              return;
+            }
+          }
+          hasHydratedCloud = true;
+          if (!remoteRaw && (state.personnel.length > 0 || hasCurrentWeekContent() || state.notes.length > 0)) {
+            pendingCloudDirty = true;
+            await pushStateToCloud(false);
+            return;
+          }
+          lastSyncedSignature = stripVolatile(state);
+          cloudStatus = "synced";
+          lastSyncedAt = new Date();
+          updateCloudBadgeOnly();
+        } catch (err) {
+          console.warn("Bulut okuma hatası:", err);
+          hasHydratedCloud = true;
+          cloudStatus = "error";
+          updateCloudBadgeOnly();
+        }
+      };
+
+      const pushStateToCloud = async (useKeepalive = false) => {
+        if (!cloudCfg.url || !cloudCfg.key || !hasHydratedCloud) return false;
+        const sig = stripVolatile(state);
+        if (sig === lastSyncedSignature && !pendingCloudDirty) {
+          cloudStatus = "synced";
+          updateCloudBadgeOnly();
+          return true;
+        }
+
+        cloudStatus = "saving";
+        updateCloudBadgeOnly();
+
+        state._meta = { updatedAt: Date.now(), clientId: CLIENT_ID };
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+
+        try {
+          const url = `${cloudCfg.url}/rest/v1/${CLOUD_TABLE_NAME}?on_conflict=id`;
+          const res = await fetch(url, {
+            method: "POST",
+            headers: restHeaders(),
+            body: JSON.stringify([{ id: CLOUD_STATE_ID, state }]),
+            keepalive: useKeepalive,
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          lastSyncedSignature = sig;
+          pendingCloudDirty = false;
+          cloudStatus = "synced";
+          lastSyncedAt = new Date();
+          updateCloudBadgeOnly();
+          return true;
+        } catch (err) {
+          console.warn("Bulut kayıt hatası:", err);
+          cloudStatus = "error";
+          updateCloudBadgeOnly();
+          return false;
+        }
+      };
+
+      const scheduleCloudSave = () => {
+        if (!cloudCfg.url || !cloudCfg.key || !hasHydratedCloud) return;
+        const sig = stripVolatile(state);
+        if (sig === lastSyncedSignature) return;
+        pendingCloudDirty = true;
+        cloudStatus = "saving";
+        updateCloudBadgeOnly();
+        if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
+        cloudSaveTimer = setTimeout(() => {
+          void pushStateToCloud(false);
+        }, 600);
+      };
+
+      const subscribeRealtime = () => {
+        if (!sbClient) return;
+        if (sbChannel) {
+          try { sbClient.removeChannel(sbChannel); } catch {}
+        }
+        try {
+          sbChannel = sbClient
+            .channel("mesai-pro-live-sync")
+            .on(
+              "postgres_changes",
+              {
+                event: "*",
+                schema: "public",
+                table: CLOUD_TABLE_NAME,
+                filter: `id=eq.${CLOUD_STATE_ID}`,
+              },
+              (payload) => {
+                const incoming = payload?.new?.state;
+                if (!incoming || typeof incoming !== "object") return;
+                if (incoming._meta?.clientId === CLIENT_ID) return;
+                const sanitized = sanitizeState(incoming);
+                const sig = stripVolatile(sanitized);
+                if (sig === lastSyncedSignature) return;
+                state = sanitized;
+                lastSyncedSignature = sig;
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+                cloudStatus = "synced";
+                lastSyncedAt = new Date();
+                render(true);
+                showToast("☁️ Canlı güncelleme alındı.", "info");
+              }
+            )
+            .subscribe();
+        } catch (err) {
+          console.warn("Realtime abonelik hatası:", err);
+        }
+      };
+
+      const startCloudEngine = async () => {
+        if (!cloudCfg.url || !cloudCfg.key) {
+          const serverCfg = await loadServerCloudConfig();
+          if (serverCfg) {
+            cloudCfg = serverCfg;
+            cloudUrlInput = serverCfg.url;
+            cloudKeyInput = serverCfg.key;
+            hasHydratedCloud = false;
+            cloudStatus = "loading";
+            updateCloudBadgeOnly();
+          }
+        }
+        initSupabaseClient();
+        if (cloudCfg.url && cloudCfg.key) {
+          await fetchCloudState(true);
+          subscribeRealtime();
+        }
+      };
+
+      // --- Week Archive Helpers ---
+      const hasCurrentWeekContent = () => {
+        const hasSched = Object.values(state.schedule || {}).some((dayObj) =>
+          Object.values(dayObj || {}).some((c) => c && c.type)
+        );
+        const hasSp = Object.values(state.special || {}).some((c) => c && c.type);
+        const hasLogs = (state.changeLogs || []).length > 0;
+        return hasSched || hasSp || hasLogs;
+      };
+
+      const snapshotCurrentWeek = () => {
+        const key = state.settings.startDate;
+        if (!key) return;
+        state.weeksArchive = state.weeksArchive || {};
+        if (hasCurrentWeekContent() || state.weeksArchive[key]) {
+          state.weeksArchive[key] = {
+            schedule: clone(state.schedule),
+            special: clone(state.special),
+            offMap: clone(state.offMap),
+            changeLogs: clone(state.changeLogs),
+            reveal: clone(state.reveal),
+            draw: clone(state.draw),
+            profile: state.settings.profile,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      };
+
+      const switchToWeek = (targetMondayYmd, silent = false) => {
+        const normalized = toYmd(mondayOf(parseYmd(targetMondayYmd)));
+        if (normalized === state.settings.startDate) return;
+        pushHistory();
+        snapshotCurrentWeek();
+
+        const archived = state.weeksArchive?.[normalized];
+        state.settings.startDate = normalized;
+        if (archived) {
+          state.schedule = clone(archived.schedule || {});
+          state.special = clone(archived.special || {});
+          state.offMap = clone(archived.offMap || {});
+          state.changeLogs = clone(archived.changeLogs || []);
+          state.reveal = clone(archived.reveal || []);
+          state.draw = clone(archived.draw || []);
+        } else {
+          state.schedule = {};
+          state.special = {};
+          state.offMap = {};
+          state.changeLogs = [];
+          state.reveal = [];
+          state.draw = [];
+        }
+        state.selectedCells = [];
+        state.selectedDay = 0;
+        focusTodayInWeek();
+        if (!silent) {
+          const wk = isoWeek(parseYmd(normalized));
+          showToast(
+            archived ? `${wk}. Hafta arşivden yüklendi.` : `${wk}. Haftaya geçildi.`,
+            "info"
+          );
+        }
+        render();
+      };
+
+      const saveLocal = (skipCloud = false) => {
+        snapshotCurrentWeek();
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+        if (!skipCloud) scheduleCloudSave();
+      };
+
+      const showToast = (text, type = "info") => {
+        const el = document.getElementById("toast");
+        if (!el) return;
+        el.textContent = text;
+        el.className = `toast ${type} no-print`;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.add("hidden"), 2500);
+      };
+
+      const hideContextMenu = () => {
+        ctxTarget = null;
+        const menu = document.getElementById("ctxMenu");
+        if (menu) menu.classList.add("hidden");
+      };
+
+      // --- Apply Cell Type Helper ---
+      const applyTypeToCells = (cells, type) => {
+        if (!cells.length) return;
+        let saleText = null;
+        if (type === "sale") {
+          saleText = saleTextFromManualName();
+          if (saleText === null) return;
+        }
+        pushHistory();
+        cells.forEach((sel) => {
+          let nc;
+          if (type === "") nc = emptyCell();
+          else if (type === "off") nc = createCell("off", "MUAF");
+          else if (type === "vacation") nc = createCell("vacation", "YILLIK İZİN");
+          else if (type === "sick") nc = createCell("sick", "RAPORLU");
+          else if (type === "sale") nc = createCell("sale", saleText || "SATIŞ");
+          else nc = shiftCell(type, state.settings);
+
+          if (sel.special) state.special[sel.dayIndex] = nc;
+          else {
+            state.schedule[sel.dayIndex] = state.schedule[sel.dayIndex] || {};
+            state.schedule[sel.dayIndex][sel.name] = nc;
+            state.offMap[sel.dayIndex] = state.offMap[sel.dayIndex] || {};
+            if (type === "off" || type === "vacation" || type === "sick") state.offMap[sel.dayIndex][sel.name] = type;
+            else delete state.offMap[sel.dayIndex][sel.name];
+          }
+        });
+        render();
+      };
+
+      const editSingleCell = (sel) => {
+        const cur = sel.special
+          ? (state.special[sel.dayIndex] || emptyCell())
+          : (state.schedule[sel.dayIndex]?.[sel.name] || emptyCell());
+        const r = window.prompt("Hücre metni (SATIŞ yazarsanız manuel isim sorulur)", cur.text);
+        if (r === null) return;
+        const t = r.trim().toLocaleUpperCase("tr-TR");
+        let nc;
+        if (!t) nc = emptyCell();
+        else if (t === "SATIŞ" || t.startsWith("SATIŞ:")) {
+          const st = saleTextFromManualName();
+          if (st === null) return;
+          nc = createCell("sale", st);
+        } else nc = createCell("custom", t);
+
+        pushHistory();
+        if (sel.special) state.special[sel.dayIndex] = nc;
+        else {
+          state.schedule[sel.dayIndex] = state.schedule[sel.dayIndex] || {};
+          state.schedule[sel.dayIndex][sel.name] = nc;
+        }
+        state.selectedCells = [];
+        render();
+      };
+
+      const toggleCompleteCells = (cells) => {
+        if (!cells.length) return;
+        pushHistory();
+        cells.forEach((sel) => {
+          if (sel.special) {
+            const c = state.special[sel.dayIndex] || emptyCell();
+            state.special[sel.dayIndex] = { ...c, completed: !c.completed };
+          } else {
+            state.schedule[sel.dayIndex] = state.schedule[sel.dayIndex] || {};
+            const c = state.schedule[sel.dayIndex][sel.name] || emptyCell();
+            state.schedule[sel.dayIndex][sel.name] = { ...c, completed: !c.completed };
+          }
+        });
+        render();
+      };
+
+      const openContextMenu = (e, sel, dayLabel) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ctxTarget = sel;
+        const menu = document.getElementById("ctxMenu");
+        if (!menu) return;
+
+        const isSabah = state.settings.profile === "sabah";
+        menu.innerHTML = `
+          <div class="ctx-hdr">${esc(sel.name)} • ${esc(dayLabel)}</div>
+          ${(!sel.special || !isSabah) ? `
+            <button class="ctx-item" data-ctx="early"><span class="ctx-dot" style="background:#3b82f6;"></span>Erken Giriş</button>
+          ` : ""}
+          <button class="ctx-item" data-ctx="late"><span class="ctx-dot" style="background:#ef4444;"></span>Geç Çıkış</button>
+          <button class="ctx-item" data-ctx="sale"><span class="ctx-dot" style="background:#f59e0b;"></span>Satış</button>
+          ${!sel.special ? `
+            <div class="ctx-sep"></div>
+            <button class="ctx-item" data-ctx="off"><span class="ctx-dot" style="background:#94a3b8;"></span>Muaf</button>
+            <button class="ctx-item" data-ctx="vacation"><span class="ctx-dot" style="background:#0284c7;"></span>Yıllık İzin</button>
+            <button class="ctx-item" data-ctx="sick"><span class="ctx-dot" style="background:#e11d48;"></span>Raporlu</button>
+          ` : ""}
+          <div class="ctx-sep"></div>
+          <button class="ctx-item" data-ctx="edit">✏️ Metni Düzenle</button>
+          <button class="ctx-item" data-ctx="complete">✓ Üstünü Çiz / Kaldır</button>
+          <button class="ctx-item" data-ctx="clear" style="color:#e11d48;">🗑 Hücreyi Temizle</button>
+        `;
+
+        menu.classList.remove("hidden");
+        const rect = menu.getBoundingClientRect();
+        const x = Math.min(e.clientX, window.innerWidth - rect.width - 10);
+        const y = Math.min(e.clientY, window.innerHeight - rect.height - 10);
+        menu.style.left = `${Math.max(8, x)}px`;
+        menu.style.top = `${Math.max(8, y)}px`;
+
+        menu.onclick = (ev) => {
+          const btn = ev.target.closest("[data-ctx]");
+          if (!btn || !ctxTarget) return;
+          const act = btn.dataset.ctx;
+          const target = ctxTarget;
+          hideContextMenu();
+          if (act === "edit") editSingleCell(target);
+          else if (act === "complete") toggleCompleteCells([target]);
+          else if (act === "clear") applyTypeToCells([target], "");
+          else applyTypeToCells([target], act);
+        };
+      };
+
+      const formatAllTeamMessage = (days, weekInfo) => {
+        let msg = `📅 *${weekInfo}*\n\n`;
+        state.personnel.forEach((name) => {
+          const sh = days.map((d) => {
+            const c = state.schedule[d.index]?.[name];
+            if (!c || !c.type || c.type === "sale") return null;
+            if (c.type === "off") return `${d.shortLabel}: MUAF`;
+            if (c.type === "vacation") return `${d.shortLabel}: İZİN`;
+            if (c.type === "sick") return `${d.shortLabel}: RAPOR`;
+            return `${d.shortLabel}: ${c.type === "early" ? "☀️ Erken" : "🌙 Geç"}`;
+          }).filter(Boolean);
+          if (sh.length) msg += `👤 *${name}*\n${sh.join(" | ")}\n\n`;
+        });
+        const sp = days.map((d) => {
+          const c = state.special[d.index];
+          if (!c || !c.type || c.type === "sale") return null;
+          return `${d.shortLabel}: ${c.type === "early" ? "☀️ Erken" : "🌙 Geç"}`;
+        }).filter(Boolean);
+        if (sp.length) msg += `⚙️ *YEDEK PARÇA (${SPECIAL_PERSON})*\n${sp.join(" | ")}\n\n`;
+        return msg.trim();
+      };
+
+      const pushHistory = () => {
+        history.push(clone(state));
+        if (history.length > 20) history.shift();
+        future = [];
+      };
+
+      const generateSmartDay = (day, pointer) => {
+        const cells = {};
+        const used = new Set();
+        const total = state.personnel.length;
+        state.personnel.forEach((name) => {
+          const st = state.offMap[day.index]?.[name];
+          if (st) {
+            const text = st === "vacation" ? "YILLIK İZİN" : st === "sick" ? "RAPORLU" : "MUAF";
+            cells[name] = createCell(st, text);
+            used.add(name);
+          } else {
+            cells[name] = emptyCell();
+          }
+        });
+        if (!total) return { cells, nextPointer: 0 };
+
+        const s = state.settings;
+        let order;
+        if (s.profile === "sabah") order = ["late"];
+        else if (s.profile === "gece") {
+          order = day.isSaturday
+            ? (s.saturdayLateEnabled ? ["early", "late"] : ["late"])
+            : (day.index % 2 === 0 ? ["late", "early"] : ["early", "late"]);
+        } else {
+          order = ["early", "late"];
+        }
+
+        const avail = Math.max(0, total - used.size);
+        const earlyCount = s.profile === "sabah" ? 0 : Math.max(0, Math.min(s.earlyPerDay, avail));
+        const effEarly = day.isSaturday && s.profile === "gece" && !s.saturdayLateEnabled ? 0 : earlyCount;
+        const lateCount = day.isSaturday && s.profile === "oglen" && !s.saturdayLateEnabled ? 0 : Math.max(0, Math.min(s.latePerDay, avail));
+
+        let ptr = pointer % total;
+        for (const kind of order) {
+          const count = kind === "early" ? effEarly : lateCount;
+          for (let i = 0; i < count; i++) {
+            let attempts = 0;
+            while (used.has(state.personnel[ptr]) && attempts < total) {
+              ptr = (ptr + 1) % total;
+              attempts++;
+            }
+            if (!used.has(state.personnel[ptr])) {
+              cells[state.personnel[ptr]] = shiftCell(kind, s);
+              used.add(state.personnel[ptr]);
+              ptr = (ptr + 1) % total;
+            }
+          }
+        }
+        return { cells, nextPointer: ptr };
+      };
+
+      const addLog = (text, dayIndex, days, kind = "swap") => {
+        const suffix = dayIndex !== null && days[dayIndex] ? ` (${days[dayIndex].label})` : "";
+        state.changeLogs.unshift({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          text: text + suffix,
+          kind,
+          dayIndex,
+          createdAt: new Date().toISOString(),
+        });
+        if (state.changeLogs.length > 200) state.changeLogs.length = 200;
+        showChangelog = true;
+      };
+
+      const visibleCell = (dayIndex, cell) => {
+        if (viewMode !== "daily") return cell;
+        const stage = state.reveal[dayIndex] ?? 0;
+        if (stage >= 2) return cell;
+        if (stage <= 0) return emptyCell();
+        const first = state.settings.startShift === "late" ? "late" : "early";
+        return cell.type === first || cell.type === "sale" ? cell : emptyCell();
+      };
+
+      // --- Pure Canvas Offline PNG Export ---
+      const exportPng = (scale, includeSpecial) => {
+        const days = buildDays(state.settings.startDate, state.settings.dayCount);
+        const colW = 175;
+        const personW = 220;
+        const headerH = 58;
+        const rowH = 68;
+        const padX = 24;
+        const padY = 24;
+        const gapBetween = 18;
+
+        const mainRows = Math.max(1, state.personnel.length);
+        const mainTableH = headerH + mainRows * rowH;
+
+        const includeLogs = showChangelog && state.changeLogs.length > 0;
+        const logRowH = 34;
+        const logsH = includeLogs ? 42 + state.changeLogs.length * logRowH + 14 : 0;
+
+        const spTableH = includeSpecial ? 42 + headerH + rowH : 0;
+
+        const totalW = padX * 2 + personW + days.length * colW;
+        let totalH = padY * 2 + mainTableH;
+        if (includeLogs) totalH += gapBetween + logsH;
+        if (includeSpecial) totalH += gapBetween + spTableH;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = totalW * scale;
+        canvas.height = totalH * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.scale(scale, scale);
+
+        ctx.fillStyle = "#eaedf2";
+        ctx.fillRect(0, 0, totalW, totalH);
+
+        const tblW = personW + days.length * colW;
+
+        const drawTable = (startY, isSpecial) => {
+          const list = isSpecial ? [SPECIAL_PERSON] : state.personnel;
+          let y = startY;
+
+          if (isSpecial) {
+            ctx.fillStyle = "#fffbeb";
+            ctx.fillRect(padX, y, tblW, 42);
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.strokeRect(padX, y, tblW, 42);
+            ctx.fillStyle = "#64748b";
+            ctx.font = "bold 12px Inter, sans-serif";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.fillText("⚙️  YEDEK PARÇA", padX + 16, y + 21);
+            y += 42;
+          }
+
+          ctx.fillStyle = isSpecial ? "#fffbeb" : "#f1f3f7";
+          ctx.fillRect(padX, y, tblW, headerH);
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.strokeRect(padX, y, tblW, headerH);
+
+          ctx.fillStyle = isSpecial ? "#b45309" : "#64748b";
+          ctx.font = "bold 12px Inter, sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText("PERSONEL", padX + 16, y + headerH / 2);
+
+          days.forEach((d, di) => {
+            const x = padX + personW + di * colW;
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + headerH); ctx.stroke();
+            ctx.fillStyle = "#334155";
+            ctx.font = "bold 14px Inter, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(d.label, x + colW / 2, y + 22);
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "500 11px Inter, sans-serif";
+            ctx.fillText(d.fullDate, x + colW / 2, y + 40);
+          });
+          y += headerH;
+
+          list.forEach((pname, ri) => {
+            const rowBg = isSpecial ? "#fffbeb" : (ri % 2 === 0 ? "#b8c0cc" : "#ffffff");
+            ctx.fillStyle = rowBg;
+            ctx.fillRect(padX, y, tblW, rowH);
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.strokeRect(padX, y, tblW, rowH);
+
+            ctx.fillStyle = isSpecial ? "#78350f" : "#1e293b";
+            ctx.font = "bold 13px Inter, sans-serif";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.fillText(pname, padX + 16, y + rowH / 2);
+
+            days.forEach((d, di) => {
+              const x = padX + personW + di * colW;
+              ctx.strokeStyle = "#e2e8f0";
+              ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + rowH); ctx.stroke();
+
+              const raw = isSpecial ? (state.special[d.index] || emptyCell()) : (state.schedule[d.index]?.[pname] || emptyCell());
+              const cell = visibleCell(d.index, raw);
+              const bx = x + 6, by = y + 6, bw = colW - 12, bh = rowH - 12;
+
+              let bg = "#f8f9fb", fg = "transparent";
+              if (cell.completed) { bg = "#e2e8f0"; fg = "#94a3b8"; }
+              else if (cell.type === "early") { bg = "#d4e6f9"; fg = "#1a4b8c"; }
+              else if (cell.type === "late") { bg = "#f7d7d4"; fg = "#a83029"; }
+              else if (cell.type === "sale") { bg = "#fef3c7"; fg = "#92400e"; }
+              else if (cell.type === "vacation") { bg = "#e0f2fe"; fg = "#0369a1"; }
+              else if (cell.type === "sick") { bg = "#ffe4e6"; fg = "#be123c"; }
+              else if (cell.type === "off") { bg = "#e2e8f0"; fg = "#64748b"; }
+              else if (cell.type === "custom") { bg = "#ede9fe"; fg = "#5b21b6"; }
+              else if (isSpecial) { bg = "#ffffff"; fg = "#fcd34d"; }
+
+              ctx.fillStyle = bg;
+              ctx.beginPath();
+              ctx.roundRect(bx, by, bw, bh, 8);
+              ctx.fill();
+
+              if (cell.text) {
+                ctx.fillStyle = fg;
+                ctx.font = "bold 13px Inter, sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(cell.text, bx + bw / 2, by + bh / 2);
+              }
+            });
+            y += rowH;
+          });
+          return y;
+        };
+
+        let curY = drawTable(padY, false);
+
+        if (includeLogs) {
+          curY += gapBetween;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(padX, curY, tblW, logsH);
+          ctx.strokeStyle = "#d946ef";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(padX, curY, tblW, logsH);
+          ctx.lineWidth = 1;
+
+          ctx.fillStyle = "#c026d3";
+          ctx.fillRect(padX, curY, 6, logsH);
+
+          ctx.fillStyle = "#fdf4ff";
+          ctx.fillRect(padX + 6, curY + 1, tblW - 7, 40);
+          ctx.fillStyle = "#86198f";
+          ctx.font = "bold 13px Inter, sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(`⇄  TAKAS AÇIKLAMALARI (${state.changeLogs.length})`, padX + 20, curY + 21);
+
+          let ly = curY + 48;
+          state.changeLogs.forEach((l) => {
+            const isRep = l.kind === "replace" || String(l.text).includes("→");
+            ctx.fillStyle = isRep ? "#fff7ed" : "#fdf4ff";
+            ctx.beginPath();
+            ctx.roundRect(padX + 18, ly, tblW - 36, logRowH - 6, 7);
+            ctx.fill();
+
+            ctx.fillStyle = isRep ? "#f97316" : "#c026d3";
+            ctx.beginPath();
+            ctx.roundRect(padX + 24, ly + 5, 58, 18, 4);
+            ctx.fill();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 10px Inter, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(isRep ? "YERİNE" : "TAKAS", padX + 53, ly + 14);
+
+            ctx.fillStyle = isRep ? "#7c2d12" : "#4a044e";
+            ctx.font = "bold 12px Inter, sans-serif";
+            ctx.textAlign = "left";
+            ctx.fillText(l.text, padX + 92, ly + 14);
+            ly += logRowH;
+          });
+          curY += logsH;
+        }
+
+        if (includeSpecial) {
+          curY += gapBetween;
+          drawTable(curY, true);
+        }
+
+        const a = document.createElement("a");
+        const qLabel = scale >= 4 ? "4K" : "HD";
+        a.download = `mesai-${state.settings.startDate}-${qLabel}${includeSpecial ? "" : "-no-yp"}.png`;
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+        showToast(`${qLabel} PNG indirildi.`, "success");
+      };
+
+      const esc = (s) =>
+        String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+
+      // --- Render ---
+      const render = (skipCloudPush = false) => {
+        hideContextMenu();
+        saveLocal(skipCloudPush);
+        document.body.classList.toggle("board-mode", boardMode);
+
+        const days = buildDays(state.settings.startDate, state.settings.dayCount);
+        state.selectedDay = clamp(state.selectedDay, 0, Math.max(0, days.length - 1));
+        const weekInfo = getWeekInfo(days);
+        const currentWeekNum = isoWeek(parseYmd(state.settings.startDate));
+        const archivedKeys = Object.keys(state.weeksArchive || {}).sort().reverse();
+
+        const counts = {};
+        state.personnel.forEach((n) => (counts[n] = { early: 0, late: 0 }));
+        days.forEach((d) => {
+          state.personnel.forEach((n) => {
+            const c = state.schedule[d.index]?.[n];
+            if (c?.type === "early") counts[n].early++;
+            if (c?.type === "late") counts[n].late++;
+          });
+        });
+
+        const renderTableHtml = (isSpecial) => {
+          const list = isSpecial ? [SPECIAL_PERSON] : state.personnel;
+          return `
+            <div class="card ${isSpecial ? "mt-4" : ""}">
+              ${isSpecial ? `
+                <div class="special-hdr">
+                  <div class="special-hdr-left">
+                    <div class="special-icon">⚙️</div>
+                    <div class="special-title">YEDEK PARÇA</div>
+                  </div>
+                  ${!boardMode ? `<button class="mini-btn no-print" data-action="hide-special" title="Gizle">✕</button>` : ""}
+                </div>
+              ` : ""}
+              ${!isSpecial && list.length === 0 ? `
+                <div class="empty-state">
+                  Henüz personel eklenmedi. Üstteki <strong>Ayarlar (⚙️)</strong> simgesine tıklayarak tek tek veya toplu personel ekleyebilirsiniz.
+                </div>
+              ` : `
+                <div class="table-wrap">
+                  <table class="sched ${isSpecial ? "special-tbl" : ""}">
+                    <thead>
+                      <tr>
+                        <th class="col-person">Personel</th>
+                        ${days.map((d) => `
+                          <th class="${d.isToday ? "is-today" : ""}">
+                            <button class="day-hdr-btn" data-action="day-header" data-day="${d.index}" ${isSpecial || boardMode ? "disabled" : ""}>
+                              <div class="day-hdr-label">${esc(d.label)}</div>
+                              <div class="day-hdr-date">${esc(d.fullDate)}</div>
+                              ${d.isToday ? `<span class="today-pill">BUGÜN</span>` : ""}
+                            </button>
+                          </th>
+                        `).join("")}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${list.map((pname, ri) => `
+                        <tr class="${isSpecial ? "" : (ri % 2 === 0 ? "zebra-0" : "zebra-1")}">
+                          <td class="person-cell">
+                            <div class="person-box">
+                              ${isSpecial ? `
+                                <span class="ek-badge">EK</span>
+                                <span class="ek-name">${esc(pname)}</span>
+                              ` : `
+                                <div>
+                                  <div class="person-name">${esc(pname)}</div>
+                                  <div class="person-counters no-print">
+                                    <span class="cnt-e">${counts[pname]?.early ?? 0} E</span>
+                                    <span class="cnt-g">${counts[pname]?.late ?? 0} G</span>
+                                  </div>
+                                </div>
+                                ${!boardMode ? `
+                                  <div class="person-actions no-print">
+                                    <button class="mini-btn" data-action="move-up" data-idx="${ri}" ${ri === 0 ? "disabled" : ""} title="Yukarı">↑</button>
+                                    <button class="mini-btn" data-action="move-down" data-idx="${ri}" ${ri === list.length - 1 ? "disabled" : ""} title="Aşağı">↓</button>
+                                    <button class="mini-btn del" data-action="del-person" data-idx="${ri}" title="Sil">🗑</button>
+                                  </div>
+                                ` : ""}
+                              `}
+                            </div>
+                          </td>
+                          ${days.map((d) => {
+                            const raw = isSpecial ? (state.special[d.index] || emptyCell()) : (state.schedule[d.index]?.[pname] || emptyCell());
+                            const cell = visibleCell(d.index, raw);
+                            const isSel = !boardMode && state.selectedCells.some(
+                              (s) => s.dayIndex === d.index && (isSpecial ? s.special : (!s.special && s.name === pname))
+                            );
+                            const cls = [
+                              "cell-btn",
+                              cell.type ? `t-${cell.type}` : (isSpecial ? "empty-special" : "empty"),
+                              raw.completed ? "completed" : "",
+                              isSel ? "selected" : "",
+                            ].join(" ");
+                            return `
+                              <td class="shift-td ${d.isToday ? "is-today-col" : ""}">
+                                <button
+                                  class="${cls}"
+                                  draggable="${!boardMode && !isSpecial && isWorking(raw.type)}"
+                                  data-action="cell-click"
+                                  data-day="${d.index}"
+                                  data-day-label="${esc(d.label)}"
+                                  data-name="${esc(pname)}"
+                                  data-special="${isSpecial ? "1" : "0"}"
+                                >
+                                  <div>${esc(cell.text)}</div>
+                                </button>
+                              </td>
+                            `;
+                          }).join("")}
+                        </tr>
+                      `).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              `}
+            </div>
+          `;
+        };
+
+        const renderCardViewHtml = () => {
+          const activeDay = days[state.selectedDay] || days[0];
+          if (!activeDay) return "";
+
+          const earlyList = [];
+          const lateList = [];
+          const otherList = [];
+          const offList = [];
+          const emptyList = [];
+
+          state.personnel.forEach((pname) => {
+            const raw = state.schedule[activeDay.index]?.[pname] || emptyCell();
+            const cell = visibleCell(activeDay.index, raw);
+            const item = { name: pname, raw, cell };
+            if (cell.type === "early") earlyList.push(item);
+            else if (cell.type === "late") lateList.push(item);
+            else if (cell.type === "sale" || cell.type === "custom") otherList.push(item);
+            else if (cell.type === "off" || cell.type === "vacation" || cell.type === "sick") offList.push(item);
+            else emptyList.push(item);
+          });
+
+          const renderCardRow = (item) => {
+            const isSel = !boardMode && state.selectedCells.some(
+              (s) => s.dayIndex === activeDay.index && !s.special && s.name === item.name
+            );
+            return `
+              <div class="m-person-card ${item.cell.type ? `t-${item.cell.type}` : ""} ${item.raw.completed ? "completed" : ""} ${isSel ? "selected" : ""}">
+                <button class="m-person-main" data-action="cell-click" data-day="${activeDay.index}" data-day-label="${esc(activeDay.label)}" data-name="${esc(item.name)}" data-special="0">
+                  <div class="m-person-name">${esc(item.name)}</div>
+                  <div class="m-person-sub">${esc(item.cell.text || "Mesai yok (tıkla / sağ tıkla)")}</div>
+                </button>
+              </div>
+            `;
+          };
+
+          const spRaw = state.special[activeDay.index] || emptyCell();
+          const spCell = visibleCell(activeDay.index, spRaw);
+
+          return `
+            <div>
+              <div class="mobile-day-pills no-print">
+                ${days.map((d) => `
+                  <button class="day-pill ${d.isToday ? "is-today" : ""} ${d.index === activeDay.index ? "active" : ""}" data-action="select-mobile-day" data-day="${d.index}">
+                    <div class="day-pill-name">
+                      ${d.isToday ? `<span class="day-pill-dot" title="Bugün"></span>` : ""}
+                      ${esc(d.label)}
+                    </div>
+                    <div class="day-pill-date">${d.isToday ? "BUGÜN • " : ""}${esc(d.fullDate)}</div>
+                  </button>
+                `).join("")}
+              </div>
+
+              ${state.personnel.length === 0 ? `
+                <div class="card empty-state">
+                  Henüz personel eklenmedi. Üstteki <strong>Ayarlar (⚙️)</strong> simgesine tıklayarak personel ekleyebilirsiniz.
+                </div>
+              ` : `
+                <div class="mobile-grid">
+                  <div class="m-group">
+                    <div class="m-group-hdr early">
+                      <span>☀️ ${esc(state.settings.earlyLabel)} ${esc(state.settings.earlyTime)}</span>
+                      <span>${earlyList.length} kişi</span>
+                    </div>
+                    <div class="m-list">
+                      ${earlyList.length ? earlyList.map(renderCardRow).join("") : `<div style="font-size:12px;color:#94a3b8;text-align:center;padding:8px;">Kayıt yok</div>`}
+                    </div>
+                  </div>
+
+                  <div class="m-group">
+                    <div class="m-group-hdr late">
+                      <span>🌙 ${esc(state.settings.lateLabel)} ${esc(state.settings.lateTime)}</span>
+                      <span>${lateList.length} kişi</span>
+                    </div>
+                    <div class="m-list">
+                      ${lateList.length ? lateList.map(renderCardRow).join("") : `<div style="font-size:12px;color:#94a3b8;text-align:center;padding:8px;">Kayıt yok</div>`}
+                    </div>
+                  </div>
+
+                  ${otherList.length ? `
+                    <div class="m-group">
+                      <div class="m-group-hdr other">
+                        <span>🏷️ SATIŞ / ÖZEL</span>
+                        <span>${otherList.length} kişi</span>
+                      </div>
+                      <div class="m-list">${otherList.map(renderCardRow).join("")}</div>
+                    </div>
+                  ` : ""}
+
+                  ${offList.length ? `
+                    <div class="m-group">
+                      <div class="m-group-hdr off">
+                        <span>📋 MUAF / İZİN / RAPOR</span>
+                        <span>${offList.length} kişi</span>
+                      </div>
+                      <div class="m-list">${offList.map(renderCardRow).join("")}</div>
+                    </div>
+                  ` : ""}
+
+                  ${showSpecial ? `
+                    <div class="m-group">
+                      <div class="m-group-hdr special">
+                        <span>⚙️ YEDEK PARÇA</span>
+                      </div>
+                      <div class="m-list">
+                        <div class="m-person-card ${spCell.type ? `t-${spCell.type}` : ""} ${spRaw.completed ? "completed" : ""}">
+                          <button class="m-person-main" data-action="cell-click" data-day="${activeDay.index}" data-day-label="${esc(activeDay.label)}" data-name="${esc(SPECIAL_PERSON)}" data-special="1">
+                            <div class="m-person-name">${esc(SPECIAL_PERSON)}</div>
+                            <div class="m-person-sub">${esc(spCell.text || "Dokunarak Erken / Geç ata")}</div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ` : ""}
+
+                  ${!boardMode && emptyList.length ? `
+                    <div class="m-group">
+                      <div class="m-group-hdr off">
+                        <span>○ MESAİ YAZILMAYANLAR</span>
+                        <span>${emptyList.length} kişi</span>
+                      </div>
+                      <div class="m-list">${emptyList.map(renderCardRow).join("")}</div>
+                    </div>
+                  ` : ""}
+                </div>
+              `}
+            </div>
+          `;
+        };
+
+        const openNotesCount = state.notes.filter((n) => !n.done).length;
+        const isCardLayout = state.settings.layoutMode === "cards";
+
+        document.getElementById("app").innerHTML = `
+          ${boardMode ? `
+            <div class="board-bar no-print">
+              <div class="board-bar-left">
+                <span class="board-badge">📺 PANO MODU</span>
+                <span class="board-title">Mesai Planlayıcı Pro • ${esc(weekInfo)}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="board-exit-btn" data-action="prev-week">← Önceki</button>
+                <button class="board-exit-btn" data-action="next-week">Sonraki →</button>
+                <button class="board-exit-btn" data-action="toggle-board">✕ Pano Modundan Çık (ESC)</button>
+              </div>
+            </div>
+          ` : `
+            <div class="topbar no-print">
+              <div class="topbar-inner">
+                <div class="brand">
+                  <div class="brand-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  </div>
+                  <div>
+                    <div class="brand-top">
+                      <h1>Mesai Planlayıcı Pro</h1>
+                      <button id="cloudStatusPill" class="cloud-pill ${cloudStatus}" data-action="toggle-cloud-panel" title="Bulut Senkronizasyon Ayarları">
+                        ${cloudStatus === "synced" ? "☁️ Bulut Senkron" : cloudStatus === "saving" ? "⏳ Kaydediliyor..." : cloudStatus === "loading" ? "📥 Yükleniyor..." : cloudStatus === "error" ? "⚠️ Bulut Hatası" : "📴 Yerel Mod"}
+                      </button>
+                    </div>
+                    <p>By Ömer • ${esc(weekInfo)}</p>
+                  </div>
+                </div>
+
+                <div class="center-controls">
+                  <div class="week-nav">
+                    <button class="week-nav-btn" data-action="prev-week" title="Önceki Hafta">← Önceki</button>
+                    <button class="week-nav-current" data-action="toggle-archive" title="Kayıtlı Haftalar Arşivi">
+                      📅 ${currentWeekNum}. Hafta
+                      ${archivedKeys.length ? `<span class="archive-badge">${archivedKeys.length}</span>` : ""}
+                    </button>
+                    <button class="week-nav-btn" data-action="next-week" title="Sonraki Hafta">Sonraki →</button>
+                  </div>
+
+                  <div class="tabs">
+                    <button class="tab-btn ${viewMode === "weekly" ? "active" : ""}" data-action="tab" data-tab="weekly">Haftalık</button>
+                    <button class="tab-btn ${viewMode === "daily" ? "active" : ""}" data-action="tab" data-tab="daily">Günlük</button>
+                  </div>
+
+                  <div class="layout-toggle" title="Görünüm Tipi Seç">
+                    <button class="layout-btn ${!isCardLayout ? "active" : ""}" data-action="layout" data-layout="table">📊 Tablo</button>
+                    <button class="layout-btn ${isCardLayout ? "active" : ""}" data-action="layout" data-layout="cards">📱 Kart</button>
+                  </div>
+                </div>
+
+                <div class="toolbar">
+                  ${viewMode === "daily" ? `
+                    <button class="btn" data-action="reveal-prev">← Geri</button>
+                    <button class="btn" data-action="reveal-next">İleri →</button>
+                    <button class="btn" data-action="reveal-reset">Sıfırla</button>
+                    <button class="btn" data-action="draw-prev">↺ Çiz Geri</button>
+                    <button class="btn btn-sky" data-action="draw-next">▶ Çiz</button>
+                  ` : ""}
+                  <button class="btn btn-indigo-soft" data-action="toggle-board" title="Tam Ekran Pano Modu (Vardiya Teslim)">📺 Pano</button>
+                  <button class="btn btn-icon ${showSettings ? "btn-active-icon" : ""}" data-action="toggle-settings" title="Ayarlar">⚙️</button>
+                  <div class="divider"></div>
+                  <button class="btn" data-action="print">🖨 Yazdır</button>
+                  <button class="btn btn-wa" data-action="whatsapp">WhatsApp</button>
+                  <button class="btn btn-emerald-soft" data-action="manual-save" title="Şimdi Kaydet (Yerel + Bulut)">💾</button>
+                  <button class="btn" data-action="download-json" title="JSON İndir">JSON</button>
+                  <button class="btn" data-action="import-json-btn" title="JSON Yükle">Yükle</button>
+                  <input id="jsonFileInput" type="file" accept=".json" class="hidden" />
+                  <div class="dropdown">
+                    <button class="btn" data-action="toggle-png-menu">⬇ PNG</button>
+                    ${showExportMenu ? `
+                      <div class="dropdown-menu">
+                        <div class="dropdown-title">PNG İndir</div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;margin-bottom:10px;cursor:pointer;">
+                          <input type="checkbox" id="pngIncludeSpecial" ${state.settings.includeSpecialInPng ? "checked" : ""} />
+                          Yedek Parça dahil et
+                        </label>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                          <button class="btn" style="justify-content:flex-start;" data-action="png" data-scale="2">HD (2x)</button>
+                          <button class="btn btn-sky-soft" style="justify-content:flex-start;" data-action="png" data-scale="4">4K (4x)</button>
+                        </div>
+                      </div>
+                    ` : ""}
+                  </div>
+                  <button class="btn btn-icon" data-action="undo" ${history.length ? "" : "disabled"} title="Geri Al (Ctrl+Z)">↶</button>
+                  <button class="btn btn-icon" data-action="redo" ${future.length ? "" : "disabled"} title="İleri Al (Ctrl+Y)">↷</button>
+                </div>
+              </div>
+            </div>
+          `}
+
+          <div class="container">
+            <!-- ☁️ BULUT SENKRONİZASYON PANELİ -->
+            ${!boardMode && showCloudPanel ? `
+              <div class="cloud-card no-print">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                  <div>
+                    <div style="font-size:13px;font-weight:800;color:#0369a1;">☁️ Online Bulut Hafıza (Supabase)</div>
+                    <div style="font-size:11px;color:#64748b;margin-top:2px;">
+                      ${cloudCfg.url && cloudCfg.key
+                        ? `Bağlı • ${lastSyncedAt ? "Son eşitleme: " + lastSyncedAt.toLocaleTimeString("tr-TR") : "Senkronizasyon aktif"}`
+                        : "Her cihazdan anlık erişim için Supabase Project URL ve Anon Key girin."}
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:6px;align-items:center;">
+                    ${cloudCfg.url && cloudCfg.key ? `<button class="btn btn-sky-soft" data-action="cloud-pull">🔄 Buluttan Çek</button>` : ""}
+                    ${cloudCfg.url && cloudCfg.key ? `<button class="btn btn-emerald-soft" data-action="cloud-push">⬆️ Buluta Yaz</button>` : ""}
+                    <button class="mini-btn" data-action="toggle-cloud-panel">✕</button>
+                  </div>
+                </div>
+                ${(cloudCfg.source === "vercel" || cloudCfg.source === "code") ? `
+                  <div style="margin-top:8px;font-size:11px;color:#047857;background:#ecfdf5;padding:7px 10px;border-radius:8px;border:1px solid #a7f3d0;">
+                    ✓ ${cloudCfg.source === "vercel" ? "Vercel ortam değişkenleri üzerinden buluta otomatik bağlı." : "Supabase bilgileri proje içine tanımlı."} Hangi cihazdan açarsanız açın değişiklikler anında kaydolur ve canlı eşitlenir.
+                  </div>
+                ` : `
+                  <div class="cloud-grid">
+                    <label class="field">
+                      <span>Supabase Project URL</span>
+                      <input id="cloudUrlInput" class="input" placeholder="https://xxxxxx.supabase.co" value="${esc(cloudUrlInput)}" />
+                    </label>
+                    <label class="field">
+                      <span>Supabase Anon Public Key</span>
+                      <input id="cloudKeyInput" class="input" placeholder="eyJhbGciOiJIUzI1NiIs..." value="${esc(cloudKeyInput)}" />
+                    </label>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center;">
+                    <button class="btn btn-sky" data-action="save-cloud-cfg">☁️ Bağlan ve Eşitle</button>
+                    ${cloudCfg.url ? `<button class="btn btn-rose-soft" data-action="clear-cloud-cfg">Bağlantıyı Kes</button>` : ""}
+                    <span style="font-size:11px;color:#64748b;">Not: Tüm cihazlarda otomatik açılması için bu iki değeri index.html üstündeki DEFAULT_SUPABASE satırlarına yazıp Vercel'e yükleyin.</span>
+                  </div>
+                `}
+              </div>
+            ` : ""}
+
+            <!-- HAFTA ARŞİVİ ÇUBUĞU -->
+            ${!boardMode && showArchive ? `
+              <div class="card card-pad mb-3 no-print">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <div style="font-size:12px;font-weight:700;color:#334155;">📚 Kayıtlı Haftalar Arşivi (${archivedKeys.length})</div>
+                  <div style="display:flex;gap:6px;">
+                    <button class="btn btn-sky-soft" data-action="go-today-week">Bugünün Haftasına Dön</button>
+                    <button class="mini-btn" data-action="toggle-archive">✕</button>
+                  </div>
+                </div>
+                ${archivedKeys.length === 0 ? `
+                  <div style="font-size:12px;color:#94a3b8;">Henüz arşivlenmiş hafta yok. Plan oluşturdukça otomatik arşivlenir.</div>
+                ` : `
+                  <div class="archive-strip">
+                    ${archivedKeys.map((k) => {
+                      const wk = isoWeek(parseYmd(k));
+                      const isCur = k === state.settings.startDate;
+                      return `
+                        <div class="archive-pill ${isCur ? "active" : ""}">
+                          <button data-action="open-archive-week" data-ymd="${esc(k)}">${wk}. Hafta (${fmtDate(k)})</button>
+                          ${!isCur ? `<button class="archive-pill-del" data-action="del-archive-week" data-ymd="${esc(k)}" title="Arşivden Sil">✕</button>` : ""}
+                        </div>
+                      `;
+                    }).join("")}
+                  </div>
+                `}
+              </div>
+            ` : ""}
+
+            ${!boardMode && showSettings ? `
+              <div class="card card-pad mb-3 no-print">
+                <div class="settings-grid">
+                  <label class="field">
+                    <span>Başlangıç Tarihi</span>
+                    <input type="date" class="input" data-setting="startDate" value="${esc(state.settings.startDate)}" />
+                  </label>
+                  <label class="field">
+                    <span>Başlangıç Personeli</span>
+                    <select class="select w-40" data-setting="pointer">
+                      ${state.personnel.length === 0 ? `<option value="0">-</option>` : state.personnel.map((n, i) => `<option value="${i}" ${state.pointer === i ? "selected" : ""}>${esc(n)}</option>`).join("")}
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Gün Sayısı</span>
+                    <input type="number" min="1" max="31" class="input w-20" data-setting="dayCount" value="${state.settings.dayCount}" />
+                  </label>
+                  <label class="field">
+                    <span>Erken / Gün</span>
+                    <input type="number" min="0" class="input w-20" data-setting="earlyPerDay" value="${state.settings.earlyPerDay}" ${state.settings.profile === "sabah" ? "disabled" : ""} />
+                  </label>
+                  <label class="field">
+                    <span>Geç / Gün</span>
+                    <input type="number" min="0" class="input w-20" data-setting="latePerDay" value="${state.settings.latePerDay}" />
+                  </label>
+                  <label class="field">
+                    <span>Erken Etiketi</span>
+                    <input class="input w-28" data-setting="earlyLabel" value="${esc(state.settings.earlyLabel)}" />
+                  </label>
+                  <label class="field">
+                    <span>Erken Saat</span>
+                    <input class="input w-20" data-setting="earlyTime" value="${esc(state.settings.earlyTime)}" />
+                  </label>
+                  <label class="field">
+                    <span>Geç Etiketi</span>
+                    <input class="input w-28" data-setting="lateLabel" value="${esc(state.settings.lateLabel)}" />
+                  </label>
+                  <label class="field">
+                    <span>Geç Saat</span>
+                    <input class="input w-20" data-setting="lateTime" value="${esc(state.settings.lateTime)}" />
+                  </label>
+                  <div class="field">
+                    <span>Profil</span>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn ${state.settings.profile === "gece" ? "btn-sky" : ""}" data-action="profile" data-profile="gece">🌙 Gece</button>
+                      <button class="btn ${state.settings.profile === "oglen" ? "btn-sky" : ""}" data-action="profile" data-profile="oglen">☀️ Öğlen</button>
+                      <button class="btn ${state.settings.profile === "sabah" ? "btn-sky" : ""}" data-action="profile" data-profile="sabah">🌅 Sabah</button>
+                    </div>
+                  </div>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;padding-bottom:8px;cursor:pointer;">
+                    <input type="checkbox" data-setting="saturdayLateEnabled" ${state.settings.saturdayLateEnabled ? "checked" : ""} ${state.settings.profile === "sabah" ? "disabled" : ""} />
+                    ${state.settings.profile === "gece" ? "Cmt Erken" : state.settings.profile === "oglen" ? "Cmt Geç" : "-"}
+                  </label>
+                  <div class="field">
+                    <span>Başlangıç</span>
+                    <div style="display:flex;gap:4px;">
+                      <button class="btn ${state.settings.startShift === "early" ? "btn-sky" : ""}" data-action="start-shift" data-val="early">Erken Başla</button>
+                      <button class="btn ${state.settings.startShift === "late" ? "btn-sky" : ""}" data-action="start-shift" data-val="late">Geç Başla</button>
+                    </div>
+                  </div>
+                  <label class="field">
+                    <span>Günlük Üretilecek Gün</span>
+                    <select class="select w-44" data-setting="selectedDay">
+                      ${days.map((d) => `<option value="${d.index}" ${state.selectedDay === d.index ? "selected" : ""}>${esc(d.label)} ${esc(d.fullDate)}</option>`).join("")}
+                    </select>
+                  </label>
+                </div>
+
+                <!-- TEKLİ + TOPLU PERSONEL EKLEME -->
+                <div class="add-person-row">
+                  <input id="nameInput" class="input" placeholder="Personel adı ekle..." value="${esc(nameInputVal)}" />
+                  <button class="btn btn-sky" data-action="add-person">+ Ekle</button>
+                  <button class="btn ${showBulkAdd ? "btn-indigo-soft" : ""}" data-action="toggle-bulk">📋 Toplu Yapıştır</button>
+                </div>
+
+                ${showBulkAdd ? `
+                  <div class="bulk-box">
+                    <div style="font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;">
+                      Toplu Personel Ekle (Her satıra bir isim veya virgülle ayrılmış liste yapıştırın)
+                    </div>
+                    <textarea id="bulkInput" class="bulk-textarea" placeholder="Örnek:&#10;AHMET YILMAZ&#10;MEHMET DEMİR&#10;ALİ KAYA">${esc(bulkInputVal)}</textarea>
+                    <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px;">
+                      <button class="btn" data-action="toggle-bulk">Vazgeç</button>
+                      <button class="btn btn-sky" data-action="add-bulk-persons">✓ Listeyi Ekle</button>
+                    </div>
+                  </div>
+                ` : ""}
+
+                <div class="settings-actions">
+                  <button class="btn btn-grad" data-action="gen-week">✨ Haftayı Üret</button>
+                  <button class="btn btn-sky-soft" data-action="gen-day">⚡ Seçili Günü Üret</button>
+                  <button class="btn btn-rose-soft" data-action="clear-all">🗑 Temizle</button>
+                </div>
+
+                <div class="settings-section">
+                  <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-bottom:6px;">Mod Seçimi</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    <button class="btn ${state.swapMode ? "btn-mode-active" : ""}" data-action="mode" data-mode="swap">↔ Takas Modu</button>
+                    <button class="btn ${state.replaceMode ? "btn-mode-active" : ""}" data-action="mode" data-mode="replace">✓ Yerine Modu</button>
+                    <button class="btn ${state.multiSelect ? "btn-mode-active" : ""}" data-action="mode" data-mode="multi">● Çoklu Seçim</button>
+                  </div>
+                </div>
+
+                <div class="settings-meta">
+                  <span><strong>${state.personnel.length}</strong> personel</span>
+                  <span>•</span>
+                  <span>Sıradaki: <strong>${esc(state.personnel[state.pointer] || "-")}</strong></span>
+                  <span>•</span>
+                  <span>Seçili: <strong>${state.selectedCells.length}</strong> hücre</span>
+                  <span>•</span>
+                  <span>İpucu: Hücreye <strong>sağ tıklayarak</strong> hızlı düzenleme menüsünü açabilirsiniz.</span>
+                </div>
+              </div>
+            ` : ""}
+
+            ${isCardLayout ? renderCardViewHtml() : renderTableHtml(false)}
+
+            ${!boardMode && state.selectedCells.length > 0 ? `
+              <div class="card card-pad mt-3 no-print">
+                <div class="sel-bar">
+                  <span style="color:#64748b;font-weight:600;">${state.selectedCells.length} hücre seçili:</span>
+                  <button class="btn" style="background:#d4e6f9;color:#1a4b8c;" data-action="set-type" data-type="early">Erken</button>
+                  <button class="btn" style="background:#f7d7d4;color:#a83029;" data-action="set-type" data-type="late">Geç</button>
+                  <button class="btn" style="background:#fef3c7;color:#92400e;" data-action="set-type" data-type="sale">Satış</button>
+                  <button class="btn" style="background:#e2e8f0;color:#475569;" data-action="set-type" data-type="off">Muaf</button>
+                  <button class="btn" style="background:#e0f2fe;color:#0369a1;" data-action="set-type" data-type="vacation">İzin</button>
+                  <button class="btn" style="background:#ffe4e6;color:#be123c;" data-action="set-type" data-type="sick">Rapor</button>
+                  <button class="btn" data-action="set-type" data-type="">Temizle</button>
+                  <button class="btn" data-action="edit-cell" ${state.selectedCells.length !== 1 ? "disabled" : ""}>Düzenle</button>
+                  <button class="btn" data-action="toggle-complete">Çiz</button>
+                  <button class="btn" style="margin-left:auto;" data-action="clear-sel">İptal</button>
+                </div>
+              </div>
+            ` : ""}
+
+            <!-- RENKLİ & DİKKAT ÇEKİCİ TAKAS AÇIKLAMALARI -->
+            ${(!boardMode || state.changeLogs.length > 0) ? `
+              <div class="swap-card ${state.changeLogs.length ? "has-logs" : ""} mt-3">
+                <button class="swap-acc-btn" data-action="toggle-changelog">
+                  <div class="swap-hdr-left">
+                    <span class="swap-icon">⇄</span>
+                    <span class="swap-title">Takas Açıklamaları</span>
+                    ${state.changeLogs.length
+                      ? `<span class="swap-count-badge">${state.changeLogs.length} değişiklik</span>`
+                      : `<span class="swap-empty-badge">Kayıt yok</span>`}
+                  </div>
+                  <span class="swap-arrow">${showChangelog ? "▲" : "▼"}</span>
+                </button>
+                ${showChangelog ? `
+                  <div class="swap-body">
+                    ${state.changeLogs.length === 0 ? `
+                      <div style="text-align:center;font-size:12px;color:#a21caf;opacity:0.7;padding:10px;">
+                        Henüz takas veya yerine geçme kaydı yok.
+                      </div>
+                    ` : `
+                      <div class="log-list">
+                        ${state.changeLogs.map((l) => {
+                          const isRep = l.kind === "replace" || String(l.text).includes("→");
+                          return `
+                            <div class="log-item ${isRep ? "is-replace" : ""} ${selectedLogIds.includes(l.id) ? "selected" : ""}" data-action="toggle-log" data-id="${esc(l.id)}">
+                              <span class="log-tag ${isRep ? "tag-replace" : "tag-swap"}">${isRep ? "YERİNE" : "TAKAS"}</span>
+                              <span class="log-text">${esc(l.text)}</span>
+                              <span class="log-time">${new Date(l.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                          `;
+                        }).join("")}
+                      </div>
+                      ${!boardMode && selectedLogIds.length ? `<button class="btn btn-rose-soft mt-3" data-action="del-logs">Seçili Açıklamaları Sil (${selectedLogIds.length})</button>` : ""}
+                    `}
+                  </div>
+                ` : ""}
+              </div>
+            ` : ""}
+
+            <!-- NOTLAR BÖLÜMÜ (Pano modunda gizli) -->
+            ${!boardMode ? `
+              <div class="card mt-3 no-print">
+                <button class="acc-btn" data-action="toggle-notes">
+                  <div class="notes-header-left">
+                    <span>📝 Notlar & Hatırlatmalar</span>
+                    ${openNotesCount > 0 ? `<span class="notes-badge">${openNotesCount} aktif</span>` : ""}
+                  </div>
+                  <span>${showNotes ? "▲" : "▼"}</span>
+                </button>
+                ${showNotes ? `
+                  <div class="acc-body">
+                    <div class="notes-input-row">
+                      <textarea id="noteInput" class="notes-textarea" placeholder="Unutmaman gerekenler, değişiklikler, kaldığın yer... (Ctrl+Enter ile ekle)">${esc(noteInputVal)}</textarea>
+                      <button class="btn btn-sky" style="align-self:flex-start;padding:10px 16px;" data-action="add-note">Not Ekle</button>
+                    </div>
+                    ${state.notes.length === 0 ? `
+                      <div style="text-align:center;font-size:12px;color:#94a3b8;padding:10px;">Henüz not eklenmedi.</div>
+                    ` : `
+                      <div class="note-list">
+                        ${state.notes.map((n) => `
+                          <div class="note-item ${n.done ? "done" : ""}">
+                            <input type="checkbox" class="note-chk" data-action="toggle-note" data-id="${esc(n.id)}" ${n.done ? "checked" : ""} />
+                            <div style="flex:1;">
+                              <div class="note-text">${esc(n.text)}</div>
+                              <div class="note-meta">${new Date(n.createdAt).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</div>
+                            </div>
+                            <button class="mini-btn del" data-action="del-note" data-id="${esc(n.id)}" title="Sil">✕</button>
+                          </div>
+                        `).join("")}
+                      </div>
+                    `}
+                  </div>
+                ` : ""}
+              </div>
+            ` : ""}
+
+            <!-- YEDEK PARÇA -->
+            ${!isCardLayout ? (
+              showSpecial
+                ? renderTableHtml(true)
+                : (!boardMode ? `<button class="show-special-btn mt-4 no-print" data-action="show-special">+ YEDEK PARÇA TABLOSUNU GÖSTER</button>` : "")
+            ) : ""}
+          </div>
+        `;
+
+        bindEvents(days, weekInfo);
+      };
+
+      const bindEvents = (days, weekInfo) => {
+        const app = document.getElementById("app");
+
+        const fileIn = document.getElementById("jsonFileInput");
+        if (fileIn) {
+          fileIn.onchange = async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            try {
+              const txt = await f.text();
+              pushHistory();
+              state = sanitizeState(JSON.parse(txt));
+              focusTodayInWeek();
+              showToast("JSON yedeği yüklendi.", "success");
+              render();
+            } catch {
+              showToast("Geçersiz JSON dosyası.", "error");
+            }
+          };
+        }
+
+        const nameIn = document.getElementById("nameInput");
+        if (nameIn) {
+          nameIn.oninput = (e) => (nameInputVal = e.target.value);
+          nameIn.onkeydown = (e) => {
+            if (e.key === "Enter") addPersonAction();
+          };
+        }
+
+        const bulkIn = document.getElementById("bulkInput");
+        if (bulkIn) {
+          bulkIn.oninput = (e) => (bulkInputVal = e.target.value);
+        }
+
+        const noteIn = document.getElementById("noteInput");
+        if (noteIn) {
+          noteIn.oninput = (e) => (noteInputVal = e.target.value);
+          noteIn.onkeydown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") addNoteAction();
+          };
+        }
+
+        const cUrlIn = document.getElementById("cloudUrlInput");
+        if (cUrlIn) cUrlIn.oninput = (e) => (cloudUrlInput = e.target.value);
+        const cKeyIn = document.getElementById("cloudKeyInput");
+        if (cKeyIn) cKeyIn.oninput = (e) => (cloudKeyInput = e.target.value);
+
+        const pngChk = document.getElementById("pngIncludeSpecial");
+        if (pngChk) {
+          pngChk.onchange = (e) => {
+            state.settings.includeSpecialInPng = e.target.checked;
+            saveLocal();
+          };
+        }
+
+        app.querySelectorAll("[data-setting]").forEach((el) => {
+          el.onchange = (e) => {
+            const key = el.dataset.setting;
+            if (key === "startDate") {
+              if (!e.target.value) return;
+              switchToWeek(e.target.value);
+              return;
+            } else if (key === "pointer") {
+              state.pointer = Number(e.target.value) || 0;
+            } else if (key === "selectedDay") {
+              state.selectedDay = Number(e.target.value) || 0;
+            } else if (key === "dayCount") {
+              state.settings.dayCount = clamp(Number(e.target.value) || 1, 1, 31);
+            } else if (key === "earlyPerDay" || key === "latePerDay") {
+              state.settings[key] = Math.max(0, Number(e.target.value) || 0);
+            } else if (key === "saturdayLateEnabled") {
+              state.settings.saturdayLateEnabled = e.target.checked;
+            } else {
+              state.settings[key] = e.target.value;
+            }
+            render();
+          };
+        });
+
+        app.querySelectorAll('[data-action="cell-click"]').forEach((btn) => {
+          btn.oncontextmenu = (e) => {
+            if (boardMode) return;
+            const sel = {
+              dayIndex: Number(btn.dataset.day),
+              name: btn.dataset.name,
+              special: btn.dataset.special === "1",
+            };
+            openContextMenu(e, sel, btn.dataset.dayLabel || "");
+          };
+          btn.ondragstart = (e) => {
+            if (boardMode) { e.preventDefault(); return; }
+            const isSp = btn.dataset.special === "1";
+            if (isSp) { e.preventDefault(); return; }
+            draggedCell = { dayIndex: Number(btn.dataset.day), name: btn.dataset.name, special: false };
+          };
+          btn.ondragover = (e) => { e.preventDefault(); };
+          btn.ondrop = (e) => {
+            e.preventDefault();
+            if (!draggedCell || boardMode) return;
+            const tDay = Number(btn.dataset.day);
+            const tName = btn.dataset.name;
+            const tSp = btn.dataset.special === "1";
+            if (draggedCell.special || tSp) { draggedCell = null; return; }
+            pushHistory();
+            const src = state.schedule[draggedCell.dayIndex]?.[draggedCell.name] || emptyCell();
+            if (state.replaceMode) {
+              if (draggedCell.dayIndex === tDay && isWorking(src.type)) {
+                state.schedule[tDay] = state.schedule[tDay] || {};
+                state.schedule[tDay][tName] = { ...src };
+                state.schedule[tDay][draggedCell.name] = createCell("sale", saleTextFromName(tName));
+                addLog(`${draggedCell.name} → ${tName} yerine`, draggedCell.dayIndex, days, "replace");
+              }
+            } else {
+              const tgt = state.schedule[tDay]?.[tName] || emptyCell();
+              state.schedule[draggedCell.dayIndex] = state.schedule[draggedCell.dayIndex] || {};
+              state.schedule[tDay] = state.schedule[tDay] || {};
+              state.schedule[draggedCell.dayIndex][draggedCell.name] = tgt;
+              state.schedule[tDay][tName] = src;
+              addLog(`${draggedCell.name} ↔ ${tName} takas`, draggedCell.dayIndex, days, "swap");
+            }
+            draggedCell = null;
+            render();
+          };
+        });
+
+        app.onclick = (e) => {
+          hideContextMenu();
+          const target = e.target.closest("[data-action]");
+          if (!target || target.tagName === "INPUT") return;
+          const act = target.dataset.action;
+
+          if (act === "tab") { viewMode = target.dataset.tab; render(true); }
+          else if (act === "layout") {
+            const nextLayout = target.dataset.layout === "cards" ? "cards" : "table";
+            state.settings.layoutMode = nextLayout;
+            if (nextLayout === "cards") focusTodayInWeek();
+            render();
+          }
+          else if (act === "toggle-cloud-panel") { showCloudPanel = !showCloudPanel; render(true); }
+          else if (act === "save-cloud-cfg") {
+            const url = cloudUrlInput.trim().replace(/\/+$/, "");
+            const key = cloudKeyInput.trim();
+            if (!url.startsWith("http") || key.length < 20) {
+              showToast("Geçerli bir Supabase URL ve Anon Key girin.", "error");
+              return;
+            }
+            cloudCfg = { url, key, source: "local" };
+            try { localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify({ url, key })); } catch {}
+            hasHydratedCloud = false;
+            showToast("Buluta bağlanılıyor...", "info");
+            void startCloudEngine();
+            render(true);
+          }
+          else if (act === "clear-cloud-cfg") {
+            try { localStorage.removeItem(CLOUD_CFG_KEY); } catch {}
+            cloudCfg = { url: "", key: "", source: "none" };
+            cloudUrlInput = "";
+            cloudKeyInput = "";
+            initSupabaseClient();
+            showToast("Bulut bağlantısı kaldırıldı.", "info");
+            render(true);
+          }
+          else if (act === "cloud-pull") {
+            void fetchCloudState(true).then(() => showToast("Buluttan güncel veri çekildi.", "success"));
+          }
+          else if (act === "cloud-push") {
+            pendingCloudDirty = true;
+            void pushStateToCloud(false).then((ok) =>
+              showToast(ok ? "Buluta kaydedildi." : "Bulut kaydı başarısız.", ok ? "success" : "error")
+            );
+          }
+          else if (act === "toggle-board") {
+            boardMode = !boardMode;
+            if (boardMode) {
+              showSettings = false;
+              showCloudPanel = false;
+              showArchive = false;
+              showExportMenu = false;
+              state.selectedCells = [];
+              if (state.changeLogs.length > 0) showChangelog = true;
+            }
+            render(true);
+          }
+          else if (act === "prev-week") { switchToWeek(shiftDaysYmd(state.settings.startDate, -7)); }
+          else if (act === "next-week") { switchToWeek(shiftDaysYmd(state.settings.startDate, 7)); }
+          else if (act === "go-today-week") { switchToWeek(toYmd(mondayOf(new Date()))); }
+          else if (act === "toggle-archive") { showArchive = !showArchive; render(true); }
+          else if (act === "open-archive-week") { switchToWeek(target.dataset.ymd); }
+          else if (act === "del-archive-week") {
+            const k = target.dataset.ymd;
+            if (k && state.weeksArchive?.[k] && k !== state.settings.startDate) {
+              delete state.weeksArchive[k];
+              showToast("Hafta arşivden silindi.", "info");
+              render();
+            }
+          }
+          else if (act === "select-mobile-day") {
+            state.selectedDay = Number(target.dataset.day) || 0;
+            render(true);
+          }
+          else if (act === "toggle-settings") { showSettings = !showSettings; render(true); }
+          else if (act === "toggle-bulk") { showBulkAdd = !showBulkAdd; render(true); }
+          else if (act === "add-bulk-persons") { addBulkPersonsAction(); }
+          else if (act === "toggle-changelog") { showChangelog = !showChangelog; render(true); }
+          else if (act === "toggle-notes") { showNotes = !showNotes; render(true); }
+          else if (act === "hide-special") { showSpecial = false; render(true); }
+          else if (act === "show-special") { showSpecial = true; render(true); }
+          else if (act === "toggle-png-menu") { showExportMenu = !showExportMenu; render(true); }
+          else if (act === "print") { window.print(); }
+          else if (act === "manual-save") {
+            saveLocal(true);
+            if (cloudCfg.url && cloudCfg.key) {
+              pendingCloudDirty = true;
+              void pushStateToCloud(false).then((ok) =>
+                showToast(ok ? "Yerel ve buluta kaydedildi." : "Yerel kaydedildi (bulut hatası).", ok ? "success" : "error")
+              );
+            } else {
+              showToast("Yerel olarak kaydedildi.", "success");
+            }
+          }
+          else if (act === "download-json") {
+            snapshotCurrentWeek();
+            const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `mesai-${state.settings.startDate}.json`;
+            a.click();
+            showToast("JSON yedeği indirildi.", "success");
+          }
+          else if (act === "import-json-btn") { document.getElementById("jsonFileInput")?.click(); }
+          else if (act === "png") {
+            const scale = Number(target.dataset.scale) || 2;
+            showExportMenu = false;
+            render(true);
+            exportPng(scale, state.settings.includeSpecialInPng);
+          }
+          else if (act === "whatsapp") {
+            const txt = formatAllTeamMessage(days, weekInfo);
+            window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, "_blank");
+          }
+          else if (act === "undo") {
+            if (!history.length) return;
+            future.unshift(clone(state));
+            state = history.pop();
+            render();
+          }
+          else if (act === "redo") {
+            if (!future.length) return;
+            history.push(clone(state));
+            state = future.shift();
+            render();
+          }
+          else if (act === "profile") {
+            pushHistory();
+            state.settings = getProfileSettings(target.dataset.profile, state.settings);
+            render();
+          }
+          else if (act === "start-shift") {
+            state.settings.startShift = target.dataset.val;
+            render();
+          }
+          else if (act === "add-person") { addPersonAction(); }
+          else if (act === "move-up" || act === "move-down") {
+            const i = Number(target.dataset.idx);
+            const t = i + (act === "move-up" ? -1 : 1);
+            if (t >= 0 && t < state.personnel.length) {
+              pushHistory();
+              [state.personnel[i], state.personnel[t]] = [state.personnel[t], state.personnel[i]];
+              render();
+            }
+          }
+          else if (act === "del-person") {
+            const i = Number(target.dataset.idx);
+            pushHistory();
+            const name = state.personnel[i];
+            state.personnel.splice(i, 1);
+            Object.keys(state.schedule).forEach((k) => delete state.schedule[k]?.[name]);
+            Object.keys(state.offMap).forEach((k) => delete state.offMap[k]?.[name]);
+            state.pointer = state.personnel.length ? state.pointer % state.personnel.length : 0;
+            render();
+          }
+          else if (act === "gen-week") {
+            if (!state.personnel.length) { showToast("Önce personel ekleyin.", "error"); return; }
+            pushHistory();
+            let ptr = state.pointer;
+            const ns = {};
+            days.forEach((d) => {
+              const r = generateSmartDay(d, ptr);
+              ns[d.index] = r.cells;
+              ptr = r.nextPointer;
+            });
+            state.schedule = ns;
+            state.pointer = ptr;
+            state.special = {};
+            state.reveal = days.map(() => 0);
+            state.draw = days.map(() => 0);
+            state.selectedCells = [];
+            showToast("Haftalık plan oluşturuldu.", "success");
+            render();
+          }
+          else if (act === "gen-day") {
+            const d = days.find((x) => x.index === state.selectedDay);
+            if (!d || !state.personnel.length) { showToast("Önce personel ekleyin.", "error"); return; }
+            pushHistory();
+            const r = generateSmartDay(d, state.pointer);
+            state.schedule[d.index] = r.cells;
+            state.pointer = r.nextPointer;
+            state.selectedCells = [];
+            showToast(`${d.label} oluşturuldu.`, "success");
+            render();
+          }
+          else if (act === "clear-all") {
+            pushHistory();
+            state.schedule = {};
+            state.special = {};
+            state.changeLogs = [];
+            state.reveal = days.map(() => 0);
+            state.draw = days.map(() => 0);
+            state.selectedCells = [];
+            showToast("Tablo temizlendi.", "info");
+            render();
+          }
+          else if (act === "mode") {
+            const m = target.dataset.mode;
+            state.swapMode = m === "swap" ? !state.swapMode : false;
+            state.replaceMode = m === "replace" ? !state.replaceMode : false;
+            state.multiSelect = m === "multi" ? !state.multiSelect : false;
+            state.selectedCells = [];
+            render(true);
+          }
+          else if (act === "day-header") {
+            if (boardMode) return;
+            viewMode = "daily";
+            state.selectedDay = Number(target.dataset.day);
+            render(true);
+          }
+          else if (act === "cell-click") {
+            if (boardMode) return;
+            const sel = { dayIndex: Number(target.dataset.day), name: target.dataset.name, special: target.dataset.special === "1" };
+            if (state.swapMode || state.replaceMode) {
+              const ex = state.selectedCells.find((s) => s.dayIndex === sel.dayIndex && s.name === sel.name && !!s.special === !!sel.special);
+              const next = ex ? state.selectedCells : [...state.selectedCells, sel];
+              if (state.swapMode && next.length === 2) {
+                const [a, b] = next;
+                if (a.special || b.special) { state.selectedCells = [sel]; render(true); return; }
+                pushHistory();
+                const ac = state.schedule[a.dayIndex]?.[a.name] || emptyCell();
+                const bc = state.schedule[b.dayIndex]?.[b.name] || emptyCell();
+                state.schedule[a.dayIndex] = state.schedule[a.dayIndex] || {};
+                state.schedule[b.dayIndex] = state.schedule[b.dayIndex] || {};
+                state.schedule[a.dayIndex][a.name] = bc;
+                state.schedule[b.dayIndex][b.name] = ac;
+                state.selectedCells = [];
+                addLog(`${a.name} ↔ ${b.name} takas`, a.dayIndex, days, "swap");
+                render(); return;
+              }
+              if (state.replaceMode && next.length === 2) {
+                const [a, b] = next;
+                if (a.special || b.special || a.dayIndex !== b.dayIndex) { state.selectedCells = [sel]; render(true); return; }
+                pushHistory();
+                const ac = state.schedule[a.dayIndex]?.[a.name] || emptyCell();
+                if (isWorking(ac.type)) {
+                  state.schedule[a.dayIndex] = state.schedule[a.dayIndex] || {};
+                  state.schedule[a.dayIndex][b.name] = { ...ac };
+                  state.schedule[a.dayIndex][a.name] = createCell("sale", saleTextFromName(b.name));
+                  addLog(`${a.name} → ${b.name} yerine`, a.dayIndex, days, "replace");
+                }
+                state.selectedCells = [];
+                render(); return;
+              }
+              state.selectedCells = next;
+              render(true); return;
+            }
+            if (sel.special && !state.multiSelect) {
+              const cur = state.special[sel.dayIndex] || emptyCell();
+              let next;
+              if (state.settings.profile === "sabah") next = cur.type === "" ? shiftCell("late", state.settings) : emptyCell();
+              else next = cur.type === "" ? shiftCell("early", state.settings) : cur.type === "early" ? shiftCell("late", state.settings) : emptyCell();
+              pushHistory();
+              state.special[sel.dayIndex] = next;
+              render(); return;
+            }
+            const ex = state.selectedCells.some((s) => s.dayIndex === sel.dayIndex && s.name === sel.name && !!s.special === !!sel.special);
+            if (state.multiSelect) {
+              state.selectedCells = ex
+                ? state.selectedCells.filter((s) => !(s.dayIndex === sel.dayIndex && s.name === sel.name && !!s.special === !!sel.special))
+                : [...state.selectedCells, sel];
+            } else {
+              state.selectedCells = ex ? [] : [sel];
+            }
+            render(true);
+          }
+          else if (act === "set-type") {
+            applyTypeToCells(state.selectedCells, target.dataset.type);
+          }
+          else if (act === "edit-cell") {
+            if (state.selectedCells.length === 1) editSingleCell(state.selectedCells[0]);
+          }
+          else if (act === "toggle-complete") {
+            toggleCompleteCells(state.selectedCells);
+          }
+          else if (act === "clear-sel") { state.selectedCells = []; render(true); }
+          else if (act === "toggle-log") {
+            if (boardMode) return;
+            const id = target.dataset.id;
+            selectedLogIds = selectedLogIds.includes(id) ? selectedLogIds.filter((x) => x !== id) : [...selectedLogIds, id];
+            render(true);
+          }
+          else if (act === "del-logs") {
+            state.changeLogs = state.changeLogs.filter((c) => !selectedLogIds.includes(c.id));
+            selectedLogIds = [];
+            render();
+          }
+          else if (act === "add-note") { addNoteAction(); }
+          else if (act === "del-note") {
+            const id = target.dataset.id;
+            state.notes = state.notes.filter((n) => n.id !== id);
+            render();
+          }
+          else if (act === "reveal-next") {
+            pushHistory();
+            const r = days.map((_, i) => state.reveal[i] ?? 0);
+            const idx = r.findIndex((v) => v < 2);
+            if (idx !== -1) { r[idx]++; state.reveal = r; state.selectedDay = idx; render(); }
+          }
+          else if (act === "reveal-prev") {
+            pushHistory();
+            const r = days.map((_, i) => state.reveal[i] ?? 0);
+            let idx = -1;
+            for (let i = r.length - 1; i >= 0; i--) if (r[i] > 0) { idx = i; break; }
+            if (idx !== -1) { r[idx]--; state.reveal = r; state.selectedDay = idx; render(); }
+          }
+          else if (act === "reveal-reset") {
+            pushHistory();
+            state.reveal = days.map(() => 0);
+            state.draw = days.map(() => 0);
+            render();
+          }
+          else if (act === "draw-next" || act === "draw-prev") {
+            pushHistory();
+            const dr = days.map((_, i) => state.draw[i] ?? 0);
+            const first = state.settings.startShift === "late" ? "late" : "early";
+            const second = first === "late" ? "early" : "late";
+            const setComp = (di, type, val) => {
+              Object.keys(state.schedule[di] || {}).forEach((n) => {
+                const c = state.schedule[di][n];
+                if (c?.type === type || (type === "early" && c?.type === "sale")) state.schedule[di][n] = { ...c, completed: val };
+              });
+              if (state.special[di]?.type === type) state.special[di] = { ...state.special[di], completed: val };
+            };
+            if (act === "draw-next") {
+              const idx = dr.findIndex((v) => v < 2);
+              if (idx !== -1) {
+                if (dr[idx] === 0) { setComp(idx, first, true); dr[idx] = 1; }
+                else { setComp(idx, second, true); dr[idx] = 2; }
+                state.draw = dr; state.selectedDay = idx; render();
+              }
+            } else {
+              let idx = -1;
+              for (let i = dr.length - 1; i >= 0; i--) if (dr[i] > 0) { idx = i; break; }
+              if (idx !== -1) {
+                if (dr[idx] === 2) { setComp(idx, second, false); dr[idx] = 1; }
+                else { setComp(idx, first, false); dr[idx] = 0; }
+                state.draw = dr; state.selectedDay = idx; render();
+              }
+            }
+          }
+        };
+
+        app.querySelectorAll('[data-action="toggle-note"]').forEach((chk) => {
+          chk.onchange = () => {
+            const id = chk.dataset.id;
+            state.notes = state.notes.map((n) => (n.id === id ? { ...n, done: chk.checked } : n));
+            render();
+          };
+        });
+      };
+
+      const addPersonAction = () => {
+        const v = nameInputVal.trim().toLocaleUpperCase("tr-TR");
+        if (!v || state.personnel.includes(v)) return;
+        pushHistory();
+        state.personnel.push(v);
+        nameInputVal = "";
+        render();
+      };
+
+      const addBulkPersonsAction = () => {
+        const parts = bulkInputVal
+          .split(/[\r\n,;\t]+/)
+          .map((x) => x.trim().toLocaleUpperCase("tr-TR"))
+          .filter((x) => x.length > 0);
+        const uniqueNew = [];
+        parts.forEach((name) => {
+          if (!state.personnel.includes(name) && !uniqueNew.includes(name)) {
+            uniqueNew.push(name);
+          }
+        });
+        if (!uniqueNew.length) {
+          showToast("Eklenecek yeni personel bulunamadı.", "error");
+          return;
+        }
+        pushHistory();
+        state.personnel.push(...uniqueNew);
+        bulkInputVal = "";
+        showBulkAdd = false;
+        showToast(`${uniqueNew.length} personel toplu eklendi.`, "success");
+        render();
+      };
+
+      const addNoteAction = () => {
+        const txt = noteInputVal.trim();
+        if (!txt) return;
+        state.notes.unshift({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          text: txt,
+          done: false,
+          createdAt: new Date().toISOString(),
+        });
+        noteInputVal = "";
+        showToast("Not eklendi.", "success");
+        render();
+      };
+
+      // Global lifecycle & sync listeners
+      document.addEventListener("click", (e) => {
+        if (ctxTarget && !e.target.closest("#ctxMenu")) hideContextMenu();
+      });
+      window.addEventListener("scroll", hideContextMenu, true);
+      window.addEventListener("resize", hideContextMenu);
+
+      // Sayfa kapanırken / arka plana geçerken bekleyen kaydı anında buluta gönder
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+          if (pendingCloudDirty) {
+            if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
+            void pushStateToCloud(true);
+          }
+        } else if (document.visibilityState === "visible") {
+          if (cloudCfg.url && cloudCfg.key && !pendingCloudDirty) {
+            void fetchCloudState(false);
+          }
+        }
+      });
+      window.addEventListener("pagehide", () => {
+        if (pendingCloudDirty) {
+          if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
+          void pushStateToCloud(true);
+        }
+      });
+      window.addEventListener("online", () => {
+        if (cloudCfg.url && cloudCfg.key) {
+          if (pendingCloudDirty) void pushStateToCloud(false);
+          else void fetchCloudState(false);
+        }
+      });
+      window.addEventListener("focus", () => {
+        if (cloudCfg.url && cloudCfg.key && !pendingCloudDirty) {
+          void fetchCloudState(false);
+        }
+      });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (ctxTarget) { hideContextMenu(); return; }
+          if (boardMode) { boardMode = false; render(true); return; }
+        }
+        const tag = e.target?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+          e.preventDefault();
+          if (history.length) { future.unshift(clone(state)); state = history.pop(); render(); }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+          e.preventDefault();
+          if (future.length) { history.push(clone(state)); state = future.shift(); render(); }
+        }
+      });
+
+      render(true);
+      void startCloudEngine();
+    })();
+  </script>
+</body>
+</html>
